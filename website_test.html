@@ -1,0 +1,859 @@
+<!doctype html>
+
+<html>
+
+<head>
+    <title>Tutorial 1: Getting Started</title>
+    <script src="cytoscape.min.js"></script>
+
+
+    <script src="https://unpkg.com/numeric/numeric-1.2.6.js"></script>
+    <script src="https://unpkg.com/layout-base/layout-base.js"></script>
+    <script src="https://unpkg.com/cose-base/cose-base.js"></script>
+    <script src="cytoscape-cxtmenu.js"></script>
+
+    <link rel="stylesheet" href="jquery-ui-1.12.1.custom/jquery-ui.min.css">
+    <script src="jquery-ui-1.12.1.custom/external/jquery/jquery.js"></script>
+    <script src="jquery-ui-1.12.1.custom/jquery-ui.min.js"></script>
+</head>
+
+<style>
+    div.tabs
+    {
+        position: absolute;
+        width: 90%;
+        left: 5%;
+        top: 77%;
+    }
+
+    div.rightSideBar
+    {
+        position: absolute;
+        width: 17%;
+        left: 81%;
+        height: 40%;
+        top: 5%;
+    }
+
+    .top
+    {
+        position: relative;
+        height: 50%;
+    }
+
+    .bottom
+    {
+        position: relative;
+        top: 54%;
+        height: 46%;
+    }
+
+    .roundedCorners {
+        position: relative;
+        border-radius: 25px;
+        background: #c9c9c9;
+        padding: 10px;
+        width: 100%;
+        height: 100%;
+    }
+
+    body
+    {
+        background-color: #9e9e9e;
+    }
+
+    #cy
+    {
+        width: 60%;
+        height: 75%;
+        position: absolute;
+        top: 0px;
+        left: 20%;
+        /*background-color: #9e9e9e ; */
+        outline: 1px solid black;
+    }
+
+    #table-scroll
+    {
+        position: absolute;
+        height: 68%;
+        margin-top: 20px;
+        overflow-y: scroll;
+        scrollbar-width: none; /* Firefox */
+        -ms-overflow-style: none;  /* Internet Explorer 10+ */
+    }
+    #table-scroll::-webkit-scrollbar /* WebKit */
+    {
+        width: 0;
+        height: 0;
+    }
+
+    table.paleBlueRows
+    {
+        font-family: "Times New Roman", Times, serif;
+        border: 0px solid #000000;
+        width: 20%;
+        height: 3%;
+        text-align: center;
+        border-collapse: collapse;
+    }
+
+    table.paleBlueRows td, table.paleBlueRows th
+    {
+        padding: 3px 2px;
+        border: 2px solid #000000;
+    }
+
+    table.paleBlueRows tbody td
+    {
+        font-size: 13px;
+        word-wrap: break-word;
+    }
+
+    table.paleBlueRows tr:nth-child(even)
+    {
+        background: #D0E4F5;
+    }
+
+    table.paleBlueRows th
+    {
+        font-size: 17px;
+        font-weight: bold;
+        color: #FFFFFF;
+        text-align: center;
+        background: #0B6FA4;
+        width: 25%;
+        word-wrap: break-word;
+    }
+
+    table.paleBlueRows th:nth-child(even)
+    {
+        background: #D0E4F5;
+    }
+
+    .loader {
+        border: 16px solid #9e9e9e;
+        border-radius: 50%;
+        border-top: 16px solid white;
+        border-right: 16px solid #9e9e9e;
+        border-bottom: 16px solid white;
+        top: 40%;
+        left: 45%;
+        position: absolute;
+        width: 100px;
+        height: 100px;
+        -webkit-animation: spin 2s linear infinite;
+        animation: spin 2s linear infinite;
+        visibility: hidden;
+        z-index: 100;
+    }
+
+    @-webkit-keyframes spin {
+        0% { -webkit-transform: rotate(0deg); }
+        100% { -webkit-transform: rotate(360deg); }
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+</style>
+
+<body>
+
+<param id="base_address" value="{{ base_addr }}">
+<div class="loader" id="loader"></div>
+<div class="tabs" id="tabs">
+    <ul>
+        <li><a href="#tabs-1">Search</a></li>
+        <li><a href="#tabs-2">Query</a></li>
+    </ul>
+    <div id="tabs-1">
+        Enter Node ID: <input type="text" id="nodeKeyText" name="nodeID" size="50">
+        <select id="nodeTypeBox">
+            <option value="Drug">Drug</option>
+            <option value="EfoDisease">EfoDisease</option>
+            <option value="Protein">Protein</option>
+            <option value="Pathway">Pathway</option>
+            <option value="OrphanetDisease">OrphanetDisease</option>
+            <option value="ChemblMolecule">ChemblMolecule</option>
+        </select><br>
+        Search Depth<select id="searchDepth">
+        <option value="1" selected="selected">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+    </select>
+        Enrichment<input type="checkbox" id="enrichment" autocomplete="off" onclick=EnrichmentCheckboxAction()><br>
+        <input type="submit" id="getnode" value="get node" onclick="GetNode()"><br>
+        <div id="enrichmentForm" hidden>
+            P-value threshold:<input id="pvalue" type="number" value=0.05>
+            Max compounds per protein:<input id="topvalue" type="number" value=5>
+        </div>
+
+    </div>
+    <div id="tabs-2">
+        Enter Query: <input type="text" id="queryText" name="query" size="50"><br>
+        <input type="submit" value="execute query" onclick="ExecuteQuery()">
+        <input type="submit" value="filter nodes" onclick="FilterGraph()">
+    </div>
+</div>
+
+<div clas="leftSideBar">
+    <h4 id="details">
+        Node Details(use mouse wheel to scroll) <br>
+        <div id="table-scroll">
+            <table id="detailsTable" class="paleBlueRows" style="table-layout: fixed; width: 19%; height:50%">
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+    </h4>
+
+</div>
+
+<div class="rightSideBar">
+
+    <div class="top">
+        <div class="roundedCorners">
+            <h3 style="text-align:center;"> LAYOUT </h3>
+            <select id="layoutSelection">
+                <option value="concentric">concentric</option>
+                <option value="cose">cose</option>
+                <option value="fcose">fcose</option>
+                <option value="circle">circle</option>
+                <option value="grid">grid</option>
+            </select>
+
+            <br>
+            <button id="toggleCenteringHighDegreeNodes">Toggle centering nodes with degree higher than:</button>
+            <br>
+            <input id="spinnerCenteringHighDegreeNodes" name="value">
+
+            <br>
+            <br>
+            <input type="submit" value="run layout" onclick="RunLayout(cy)">
+        </div>
+    </div>
+
+    <div class="bottom">
+        <div class="roundedCorners">
+            <input type="submit" id="filter" value="filter nodes" onclick="FilterGraph()"><hr>
+            <input type="submit" value="Download Graph" onclick="DownloadGraph()">
+            <input type="submit" value="Download Style" onclick="DownloadStyle()">
+            <input type="submit" value="Show Image" onclick="DownloadImage()">
+        </div>
+    </div>
+</div>
+
+<div id="cy"></div>
+<script></script>
+
+
+
+<script>
+    let base_address = document.getElementById("base_address").value;
+    console.log("BASE ADDR:" + base_address);
+    window.flag = false;
+
+    //<!-- this executes jquery on tabs and other parts -->
+    var spinner = $( "#spinnerCenteringHighDegreeNodes" ).spinner();
+    spinner.spinner( "value", 20 );
+    spinner.spinner( "option", "disabled", true );
+    $( function() {
+        $( "#tabs" ).tabs();
+
+        $( "#toggleCenteringHighDegreeNodes" ).on( "click", function() {
+            if ( spinner.spinner( "option", "disabled" ) ) {
+                spinner.spinner( "enable" );
+            } else {
+                spinner.spinner( "disable" );
+            }
+        });
+    } );
+
+    function EnrichmentCheckboxAction() {
+        var checkBox = document.getElementById("enrichment");
+        var form = document.getElementById("enrichmentForm");
+        document.getElementById("pvalue").value = 0.05;
+        topval = document.getElementById("topvalue").value = 5;
+        if (checkBox.checked) {
+            form.style.display = "block";
+        } else {
+            form.style.display = "none";
+        }
+    }
+
+    let checkForGraph = function() {
+        try {
+            cy.json()
+        }
+        catch(error) {
+            alert("You have not searched for a graph yet!");
+            return true;
+        }
+    }
+
+    let DownloadGraph = function() {
+        if (checkForGraph()) return null;
+        let content = cy.json();
+        let date = new Date();
+        const filename = date.getDay() + '-' + date.getMonth() + '-' + date.getFullYear() + '-graph.txt';
+        var blob = new Blob([JSON.stringify(content)], {type: 'text'});
+        if(window.navigator.msSaveOrOpenBlob) {
+            window.navigator.msSaveBlob(blob, filename);
+        }
+        else{
+            var elem = window.document.createElement('a');
+            elem.href = window.URL.createObjectURL(blob);
+            elem.download = filename;
+            document.body.appendChild(elem);
+            elem.click();
+            document.body.removeChild(elem);
+        }
+    }
+
+    let DownloadStyle = function() {
+        if (checkForGraph()) return null;
+        let style = cy.style().json();
+        let date = new Date();
+        const filename = date.getDay() + '-' + date.getMonth() + '-' + date.getFullYear() + '-style.txt';
+        var blob = new Blob([JSON.stringify(style)], {type: 'text'});
+        if(window.navigator.msSaveOrOpenBlob) {
+            window.navigator.msSaveBlob(blob, filename);
+        }
+        else{
+            var elem = window.document.createElement('a');
+            elem.href = window.URL.createObjectURL(blob);
+            elem.download = filename;
+            document.body.appendChild(elem);
+            elem.click();
+            document.body.removeChild(elem);
+        }
+    }
+
+    let DownloadImage = function() {
+        if (checkForGraph()) return null;
+        let image = cy.png();
+        window.open(image,'Image','width=largeImage.stylewidth,height=largeImage.style.height,resizable=1');
+    }
+
+    function FilterGraph() {
+        try {
+            window.nodeSet = new Set();
+            window.compoundDict = {};
+            window.pValueThreshold = document.getElementById("pvalue").value;
+            window.noOfCompoundsPerProtein = document.getElementById("topvalue").value;
+            console.log(pValueThreshold);
+            console.log(noOfCompoundsPerProtein);
+            var a = cy.nodes().filter(filterNode);
+            a = a.union(cy.nodes().filter(filterCandidates));
+            var b = cy.edges().filter(filterEdge);
+            g = a.union(b);
+            cy.elements().remove();
+            cy.add(g);
+            RunLayout(cy);
+
+        } catch (e) {
+            console.log(e);
+        }
+    }
+
+    function filterCandidates(ele) {
+        if (ele.data("label") == "Drug Candidate" && nodeSet.has(ele.data("id"))) return true;
+        return false;
+    }
+
+    function filterEdge(ele) {
+        var src = ele.data("source");
+        var trg = ele.data("target");
+        if (nodeSet.has(src) && nodeSet.has(trg)) return true;
+        return false;
+    }
+
+    function filterNode(ele) {
+        var label = ele.data("label");
+        if (label == "Protein") {
+            nodeSet.add(ele.data("id"));
+            var x = ele.connectedEdges("[relation_type = 'ACTIVITY']");
+            var co = [];
+            for (var i = 0; i < x.length; i++) {
+                var sourceID = x[i].data("source");
+                var sourceNode = cy.getElementById(sourceID);
+                if (sourceNode.data("score") > 0 && sourceNode.data("p_value") < pValueThreshold) {
+                    co.push(sourceNode);
+                }
+            }
+            co.sort(compareCompounds);
+            for (var i = 0; i < co.length; i++) {
+                if (i >= noOfCompoundsPerProtein) break;
+                window.nodeSet.add(co[i].data("id"));
+            }
+            return true;
+        }
+        if (label == "Drug") {
+            nodeSet.add(ele.data("id"));
+            return true;
+        }
+        if (label != "Drug Candidate")
+            if (ele.data("p_value") < pValueThreshold) {
+                nodeSet.add(ele.data("id"));
+                return true;
+            }
+        return false;
+    }
+
+    function compareCompounds(ele1, ele2) {
+        return ele2.data("score") - ele1.data("score");
+    }
+
+
+    function GetNode() {
+        activateLoader();
+        const searchDepth = document.getElementById("searchDepth");
+        const selectedDepth = searchDepth.options[searchDepth.selectedIndex].value;
+        const nodeType = document.getElementById("nodeTypeBox");
+        const selectedNodeType = nodeType.options[nodeType.selectedIndex].value;
+        document.getElementById("enrichment").disabled = true;
+        document.getElementById("getnode").disabled = true;
+
+
+        let address = base_address;
+        var client = new HttpClient();
+
+        if (selectedDepth == 1) {
+            address = address + "search/?key=" + document.getElementById("nodeKeyText").value + "&type=" + selectedNodeType + "&enrichment=" + document.getElementById("enrichment").checked;
+        }
+        else {
+            address = address + "search/?key=" + document.getElementById("nodeKeyText").value + "&type=" + selectedNodeType + "&depth=" + selectedDepth + "&enrichment=" + document.getElementById("enrichment").checked;
+        }
+        client.get(address, function (response) {
+            hideLoader();
+            CreateGraph(response);
+        });
+    }
+
+    let activateLoader = function() {
+        let loader = document.getElementById("loader");
+        loader.style.visibility = "visible";
+    }
+
+    let hideLoader = function() {
+        let loader = document.getElementById("loader");
+        loader.style.visibility = "hidden";
+    }
+
+    let CreateGraph = function (response) {
+        // do something with response
+        console.log(response);
+        const response_parsed = JSON.parse(response.slice(13, -1));
+        if(response_parsed.length == 0){
+            document.getElementById("enrichment").disabled = false;
+            document.getElementById("getnode").disabled = false;
+            alert("The query result is empty! Make sure you have searched with correct paramaters");
+            return false;
+        }
+        window.els = response_parsed;
+        if (flag == true) {
+            cy.unmount();
+            cy.destroy();
+        }
+
+        try {
+            window.cy = cytoscape({
+                container: undefined,
+                elements: els,
+                style: [{
+                    selector: 'node',
+                    style: {
+                        "content": "data(label)",
+                        'shape': 'triangle',
+                        'background-color': 'red',
+                        "font-size": "12px",
+                        "text-valign": "center",
+                        "text-halign": "center",
+                        "background-color": "#555",
+                        "text-outline-color": "#555",
+                        "text-outline-width": "2px",
+                        "color": "#fff",
+                        "overlay-padding": "6px",
+                        "z-index": "10"
+                    }
+                },
+                    {
+                        selector: 'node[label="Drug"]', // Drug: Compound
+                        style: {
+                            "content": "data(display_name)",
+                            'shape': 'hexagon',
+                            'background-color': 'red'
+                        }
+                    },
+                    {
+                        selector: 'node[label="Protein"]', // Drug: Compound
+                        style: {
+                            "content": "data(display_name)",
+                            "shape": "ellipse",
+                            'background-color': 'blue'
+                        }
+                    },
+                    {
+                        selector: 'node[label="Disease"]', // TODO Disease, content unknown
+                        style: {
+                            "content": "data(display_name)",
+                            'shape': 'triangle',
+                            'background-color': 'orange'
+                        }
+                    },
+                    {
+                        selector: 'node[label="Phenotype"]', // Phenotype
+                        style: {
+                            "content": "data(display_name)",
+                            'shape': 'tag',
+                            'background-color': 'green'
+                        }
+                    },
+                    {
+                        selector: 'node[label="Drug Candidate"]', // Phenotype
+                        style: {
+                            "content": "data(display_name)",
+                            'shape': 'square',
+                            'background-color': 'purple',
+                        }
+                    },
+                    {
+                        selector: 'node[label="Pathway"]', // Phenotype
+                        style: {
+                            "content": "data(display_name)",
+                            'shape': 'rhomboid',
+                            'background-color': 'yellow',
+                        }
+                    },
+                    {
+                        selector: 'edge',
+                        style: {
+                            "curve-style": 'bezier',
+                            "control-point-step-size": 22,
+                            'width': 3,
+                            'opacity': 0.5,
+                            'line-color': '#4287f5'
+                        }
+                    }
+                ]
+            });
+        } catch (e) {
+            console.log("ERROR: " + e);
+            console.log(response);
+            return;
+        }
+        if (document.getElementById("enrichment").checked) {
+            FilterGraph();
+            document.getElementById("filter").disabled = false;
+            //document.getElementById("revert").disabled = false;
+        } else {
+            document.getElementById("filter").disabled = true;
+            //document.getElementById("revert").disabled = true;
+        }
+        flag = true;
+        document.getElementById("enrichment").disabled = false;
+        document.getElementById("getnode").disabled = false;
+        cy.mount(document.getElementById('cy'));
+
+        cy.cxtmenu({
+            selector: 'node',
+
+            commands: [
+                {
+                    content: 'Remove',
+                    select: function(ele){
+                        ele.remove();
+                    }
+                },
+                {
+                    content: 'Remove with dependents',
+                    select: function(ele){
+
+                        var childs = ele.neighborhood(function( child ){
+                            return child.neighborhood().nodes().length == 1;//removes nodes that are only connected to ele even if there is multipl econnections
+                        });
+
+                        cy.remove(childs);
+
+                        ele.remove();
+                    }
+                },
+                {
+                    content: 'Go to website',
+                    select: function(ele){
+                        //const node = ele.target;
+                        console.log(ele.data("label"));
+                        if(ele.data("label")=='Drug')
+                        {
+                            window.open("https://www.drugbank.ca/"+ele.data("drugbank_drug_id"), '_blank');
+                        }
+                        else if(ele.data("label")=='Protein')
+                        {
+                            window.open("https://www.uniprot.org/uniprot/"+ele.data("accession"), '_blank');
+                        }
+                        else if(ele.data("label")=='Drug Candidate')
+                        {
+                            window.open("https://www.ebi.ac.uk/chembldb/compound/inspect/"+ele.data("molecule_chembl_id"), '_blank');
+                        }
+                        else if(ele.data("label")=='Pathway')
+                        {
+                            window.open("https://reactome.org/content/detail/"+ ele.data("reactome_id").toLowerCase(), '_blank');
+                        }
+                    }
+                }
+            ]
+        });
+        cy.cxtmenu({
+            selector: 'core',
+
+            commands: [
+                {
+                    content: 'Remove 0 degree nodes',
+                    select: function(){
+                        var elements=cy.filter(function(element, i){
+                            return element.isNode() && element.degree()==0;
+                        });
+                        cy.remove(elements);
+                    }
+                }
+            ]
+        });
+        cy.on('click', 'node', function (evt) {
+            data = this.data();
+            var table = document.getElementById("detailsTable");
+            var rowCount = table.rows.length;
+            for (var x = rowCount - 1; x >= 0; x--) {
+                table.deleteRow(x);
+            }
+            let type = data["label"];
+            for (var key in data) {
+                let cross_ref_flag = false;
+                let row_data = "";
+                if (key != "type" && key != "id" && key != "label" && key != "display_name") {
+                    switch (type) {
+                        case "Drug":
+                            if(key == "xref_pubchem") {
+                                cross_ref_flag = true;
+                                const cross_refs = data[key];
+                                for (cross_ref in cross_refs) {
+                                    const sid = cross_refs[0].split(":")[1].slice(1,);
+                                    row_data += "<a href='https://pubchem.ncbi.nlm.nih.gov/substances/"+sid+"'target='_blank'>"+sid+"</a>, ";
+                                }
+                            } else if(key == "molecule_chembl_id") {
+                                cross_ref_flag = true;
+                                const ref = data[key];
+                                row_data += "<a href='https://www.ebi.ac.uk/chembl/compound_report_card/"+ref+"'target='_blank'>"+ref+"</a> ";
+                            } else if(key == "kegg_cid") {
+                                cross_ref_flag = true;
+                                const ref = data[key];
+                                row_data += "<a href='https://www.genome.jp/dbget-bin/www_bget?cpd:"+ref+"'target='_blank'>"+ref+"</a> ";
+                            } else if(key == "pubchem_sid") {
+                                cross_ref_flag = true;
+                                const ref = data[key];
+                                row_data += "<a href='https://pubchem.ncbi.nlm.nih.gov/substances/"+ref+"'target='_blank'>"+ref+"</a> ";
+                            } else if(key == "pubchem_cid") {
+                                cross_ref_flag = true;
+                                const ref = data[key];
+                                row_data += "<a href='https://pubchem.ncbi.nlm.nih.gov/compounds/"+ref+"'target='_blank'>"+ref+"</a> ";
+                            }
+                        case "Drug Candidate":
+                            if(key == "xref_pubchem") {
+                                cross_ref_flag = true;
+                                const cross_refs = data[key];
+                                for (cross_ref in cross_refs) {
+                                    const sid = cross_refs[0].split(":")[1].slice(1,);
+                                    row_data += "<a href='https://pubchem.ncbi.nlm.nih.gov/substances/"+sid+"'target='_blank'>"+sid+"</a>, ";
+                                }
+                            }
+                        case "Disease" :
+                            if(key == "doid") {
+                                cross_ref_flag = true;
+                                const cross_refs = data[key];
+                                for (cross_ref in cross_refs) {
+                                    const sid = cross_refs[0].split(":")[1].slice(1,);
+                                    row_data += "<a href='https://www.ebi.ac.uk/ols/ontologies/doid/terms?iri=http%3A%2F%2Fpurl.obolibrary.org%2Fobo%2FDOID_0"+sid+"'target='_blank'>"+sid+"</a>, ";
+                                }
+                            }
+                    }
+                    var row = table.insertRow(0);
+                    row.innerHTML = "<th>" + key + "</th>";
+                    var cell1 = row.insertCell(-1); // 0 will put columns in reverse order for some reason
+                    if(cross_ref_flag) cell1.innerHTML = row_data;
+                    else cell1.innerText = data[key];
+                }
+            }
+        });
+        cy.on('click', 'edge', function (evt) {
+            data = this.data();
+            var table = document.getElementById("detailsTable");
+            var rowCount = table.rows.length;
+            for (var x = rowCount - 1; x >= 0; x--) {
+                table.deleteRow(x);
+            }
+            for (var key in data) {
+                if (key != "type" && key != "id") {
+                    var row = table.insertRow(0);
+                    row.innerHTML = "<th>" + key + "</th>";
+                    var cell1 = row.insertCell(-1); // 0 will put columns in reverse order for some reason
+                    cell1.innerText = data[key];
+                }
+            }
+        });
+        /*
+        cy.on('click', 'edge', function (evt)
+        {
+            data = this.data();
+        text2 = "Node details: <br>";
+        for (var key in data) {
+            if (key != "type" && key != "id")
+                text2 += key + ": " + data[key] + "<br>";
+        }
+            console.log(text2);
+            document.getElementById("details").innerHTML = text2;
+        });
+        */
+        console.log(JSON.parse(response.slice(13, -1)));
+        RunLayout(cy);
+    }
+
+
+    function ExecuteQuery() {
+        let address = base_address + "search/cypher?q=";
+        var client = new HttpClient();
+
+        client.get(address + document.getElementById("queryText").value, function (response) {
+            CreateGraph(response)
+        });
+    }
+
+    /* concentric layout variables */
+    var drugCount=0;
+    var proteinCount=0;
+    var diseaseCount=0;
+    var phenotypeCount=0;
+    var drugCandidateCount=0;
+    var pathwayCount=0;
+    function RunLayout(cy) {
+        _layoutSelection = document.getElementById("layoutSelection");
+        if (_layoutSelection.options[_layoutSelection.selectedIndex].value == "fcose") {
+            var layout = cy.layout({
+                name: "fcose",
+                nodeRepulsion: true,
+                idealEdgeLength: cy.elements.length * 300,
+                edgeElasticity: true
+            });
+            layout.run();
+        }
+        else if (_layoutSelection.options[_layoutSelection.selectedIndex].value == "circle") {
+            var layout = cy.layout({
+                name: "circle"
+            });
+            layout.run();
+        }
+        else if (_layoutSelection.options[_layoutSelection.selectedIndex].value == "concentric") {
+
+            proteinCount=0;
+            pathwayCount=0;
+            phenotypeCount=0;
+            diseaseCount=0;
+            drugCount=0;
+            drugCandidateCount=0;
+
+            var isCenteringHighDegreeNodesDisabled = spinner.spinner( "option", "disabled" );
+
+            var layout = cy.layout({
+                //basically typeMultiplier divider * levelWidth is the amount of nodes that can be in 1 circle(eg: proteinCount/->2<-,  levelWidth:->5<-:::: 2*5=10), divider can be unique for each node type
+                name: 'concentric',
+                concentric: function (node)
+                {
+                    var typeMultiplier = 1;
+                    data = node.data();
+                    if(!isCenteringHighDegreeNodesDisabled)
+                    {
+                        if(node.degree() > spinner.spinner("value") ) return 10000;
+                    }
+                    for(var key in data)
+                    {
+                        if(key=="label")
+                        {
+                            if(data[key]=="Protein")
+                            {
+                                proteinCount++;
+                                typeMultiplier = 1000 - proteinCount/2;
+                            }
+                            else if(data[key]=="Pathway")
+                            {
+                                pathwayCount++;
+                                typeMultiplier = 800 - pathwayCount/2;
+                            }
+                            else if(data[key]=="Phenotype")
+                            {
+                                phenotypeCount++;
+                                typeMultiplier = 600 - phenotypeCount/2;
+                            }
+                            else if(data[key]=="Disease")
+                            {
+                                diseaseCount++;
+                                typeMultiplier = 400 - diseaseCount/2;
+                            }
+                            else if(data[key]=="Drug")
+                            {
+                                drugCount++;
+                                typeMultiplier = 200 - (drugCandidateCount + drugCount)/2;
+                            }
+                            else if(data[key]=="Drug Candidate")
+                            {
+                                drugCandidateCount++;
+                                typeMultiplier = 200 - (drugCandidateCount + drugCount)/2;
+                            }
+
+                            break;
+                        }
+                    }
+                    return typeMultiplier;
+                },
+                levelWidth: function (nodes)
+                {
+                    return nodes.maxDegree()/4;
+                },
+                equidistant:false,
+            });
+            layout.run();
+        }
+        else if (_layoutSelection.options[_layoutSelection.selectedIndex].value == "grid") {
+            var layout = cy.layout({
+                name: 'grid',
+                avoidOverlap: true,
+                avoidOverlapPadding: 80
+            });
+            layout.run();
+        }
+    }
+
+    var HttpClient = function () {
+        this.get = function (aUrl, aCallback, headerName = "", headerValue = "") {
+            var anHttpRequest = new XMLHttpRequest();
+
+            anHttpRequest.onreadystatechange = function () {
+                if (anHttpRequest.readyState == 4 && anHttpRequest.status == 200) {
+                    aCallback(anHttpRequest.responseText);
+                }
+            }
+
+            anHttpRequest.open("GET", aUrl, true);
+
+            if (headerName != "") {
+                anHttpRequest.setRequestHeader(headerName, headerValue);
+            }
+
+            anHttpRequest.send(null);
+        }
+    }
+
+
+</script>
+</body>
+</html>
