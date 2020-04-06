@@ -52,10 +52,25 @@
     div.rightSideBar
     {
         position: absolute;
-        width: 17%;
-        left: 81%;
-        height: 40%;
-        top: 5%;
+        width: 18.5%;
+        height: 73%;
+        top: 1%;
+        left: 80.5%;
+    }
+
+    div.rightSideBar.ui-tabs .ui-tabs-panel
+    {
+        padding: 1em 1.4em 1em 0;
+        height: 85%;
+        overflow-y: scroll;
+        scrollbar-width: none; /* Firefox */
+        -ms-overflow-style: none;  /* Internet Explorer 10+ */
+    }
+
+    div.rightSideBar .ui-tabs-panel::-webkit-scrollbar /* WebKit */
+    {
+        width: 0;
+        height: 0;
     }
 
     .top
@@ -190,6 +205,7 @@
     <ul>
         <li><a href="#tabs-1">Search</a></li>
         <li><a href="#tabs-2">Query</a></li>
+        <li><a href="#tabs-3">Download</a></li>
     </ul>
     <div id="tabs-1">
         Enter Node ID: <input type="text" id="nodeKeyText" name="nodeID" size="50">
@@ -210,17 +226,16 @@
         <option value="2">2</option>
         <option value="3">3</option>
     </select>
-        <input type="submit" id="getnode" value="get node" onclick="GetNode()"><br>
-        <div id="enrichmentForm">
-            P-value threshold:<input id="pvalue" type="number" value=0.05>
-            Max compounds per protein:<input id="topvalue" type="number" value=5>
-        </div>
-
+        <input type="submit" id="getnode" value="get node" onclick="GetNode()">
     </div>
     <div id="tabs-2">
         Enter Query: <input type="text" id="queryText" name="query" size="50"><br>
         <input type="submit" value="execute query" onclick="ExecuteQuery()">
-        <input type="submit" value="filter nodes" onclick="FilterGraphNew()">
+    </div>
+    <div id="tabs-3">
+        <input type="submit" value="Download Graph" onclick="DownloadGraph()">
+        <input type="submit" value="Download Style" onclick="DownloadStyle()">
+        <input type="submit" value="Show Image" onclick="DownloadImage()">
     </div>
 </div>
 
@@ -229,38 +244,68 @@
     </ul>
 </div>
 
-<div class="rightSideBar">
+<div class="rightSideBar" id="rightSideBar">
 
-    <div class="top">
-        <div class="roundedCorners">
-            <h3 style="text-align:center;"> LAYOUT </h3>
-            <select id="layoutSelection">
-                <option value="concentric">concentric</option>
-                <option value="cose">cose</option>
-                <option value="fcose">fcose</option>
-                <option value="circle">circle</option>
-                <option value="grid">grid</option>
-            </select>
-
-            <br>
-            <button id="toggleCenteringHighDegreeNodes">Toggle centering nodes with degree higher than:</button>
-            <br>
-            <input id="spinnerCenteringHighDegreeNodes" name="value">
-
-            <br>
-            <br>
-            <input type="submit" value="run layout" onclick="RunLayout(cy)">
-        </div>
+    <ul>
+        <li><a href="#layoutTab">Layout</a></li>
+        <li><a href="#filteringTab">Filtering</a></li>
+        <li><a href="#legendTab">Legend</a></li>
+    </ul>
+    <div id="layoutTab">
+        Layout type:
+        <select id="layoutSelection">
+            <option value="concentric">concentric</option>
+            <option value="cose">cose</option>
+            <option value="fcose">fcose</option>
+            <option value="circle">circle</option>
+            <option value="grid">grid</option>
+        </select>
+        <br>
+        <br>
+        <button id="toggleCenteringHighDegreeNodes">Toggle centering nodes with degree higher than:</button>
+        <br>
+        <input id="spinnerCenteringHighDegreeNodes" name="value">
+        <br>
+        <br>
+        <input type="submit" value="run layout" onclick="RunLayout(cy)">
     </div>
-
-    <div class="bottom">
-        <div class="roundedCorners">
-            <input type="submit" id="filter" value="filter nodes" onclick="FilterGraph()">
-            <input id="revert" type="submit" value="revert filtering" onclick="revertFiltering()"><hr>
-            <input type="submit" value="Download Graph" onclick="DownloadGraph()">
-            <input type="submit" value="Download Style" onclick="DownloadStyle()">
-            <input type="submit" value="Show Image" onclick="DownloadImage()">
-        </div>
+    <div id="filteringTab">
+        P-value threshold:<input id="pvalue" type="number" value=0.05>
+        <br>
+        <br>
+        Max compounds per protein:<input id="topvalue" type="number" value=5>
+        <br>
+        <br>
+        Max node count per node type: <input id="nodeTypeMaxCount" type="number" value=10>
+        <br>
+        <br>
+        <input type="submit" value="filter nodes" onclick="FilterGraphNew()">
+        <input id="revert" type="submit" value="revert filtering" onclick="revertFiltering()">
+    </div>
+    <div id="legendTab" class="table-scroll">
+        <img src="disease.png" alt="Disease node" style="vertical-align:middle"> Disease
+        <br>
+        <img src="phenotype.png" alt="Phenotype node" style="vertical-align:middle"> Phenotype
+        <br>
+        <img src="gene.png" alt="Gene node" style="vertical-align:middle"> Gene
+        <br>
+        <img src="protein.png" alt="Protein node" style="vertical-align:middle"> Protein
+        <br>
+        <img src="interpro.png" alt="Interpro(Domain) node" style="vertical-align:middle"> Interpro(Domain)
+        <br>
+        <img src="geneOntology.png" alt="Gene Ontology node" style="vertical-align:middle"> Gene Ontology
+        <br>
+        <img src="pathway.png" alt="Pathway node" style="vertical-align:middle"> Pathway
+        <br>
+        <img src="drug.png" alt="Drug node" style="vertical-align:middle"> Drug
+        <br>
+        <img src="drugCandidate.png" alt="Drug Candidate(Compound) node" style="vertical-align:middle"> Drug Candidate (Compound)
+        <br>
+        <img src="mainNode.png" alt="Drug Candidate(Compound) node" style="vertical-align:middle"> Main Node
+        <br>
+        <img src="edgeCount.png" alt="Drug Candidate(Compound) node" style="vertical-align:middle"> Edge Count
+        <br>
+        <img src="edgeCountLoop.png" alt="Drug Candidate(Compound) node" style="vertical-align:middle"> Loop Edge Count
     </div>
 </div>
 
@@ -274,7 +319,7 @@
     //showHide();
 
     // template for dynamically adding tabs
-    let tabTemplate = "<li><a href='#{href}'>#{label}</a> <span class='ui-icon ui-icon-close' role='presentation'>Remove Tab</span></li>";
+    let tabTemplate = "<li><a href='#{href}'>#{label}</a></li>";
 
     //<!-- this executes jquery on tabs and other parts -->
     var spinner = $( "#spinnerCenteringHighDegreeNodes" ).spinner();
@@ -285,6 +330,7 @@
     $( function() {
         $( "#tabs" ).tabs();
         leftSideBarTabs = $( "#leftSideBar" ).tabs();
+        $("#rightSideBar").tabs();
 
         $( "#toggleCenteringHighDegreeNodes" ).on( "click", function() {
             if ( spinner.spinner( "option", "disabled" ) ) {
@@ -588,7 +634,8 @@
             window.cy = cytoscape({
                 container: undefined,
                 elements: null,
-                style: [{
+                style: [
+                    {
                     selector: 'node',
                     style: {
                         "content": "data(label)",
@@ -604,7 +651,7 @@
                         "overlay-padding": "6px",
                         "z-index": "10"
                     }
-                },
+                    },
                     {
                         selector: 'node[label="Drug"]',
                         style: {
@@ -805,11 +852,12 @@
 
             ClearLeftSideBar();
             leftSideBarTabCount=1;
-            CreateLeftSideBarTab(0);
-
             data = this.data();
-            var table = document.getElementById("detailsTable0");
             let type = data["label"];
+            CreateLeftSideBarTab(0,type);
+
+
+            var table = document.getElementById("detailsTable0");
             for (var key in data) {
                 let cross_ref_flag = false;
                 let row_data = "";
@@ -888,7 +936,7 @@
 
             for(let edgeIndex = 0; edgeIndex < leftSideBarTabCount ; edgeIndex++)
             {
-                CreateLeftSideBarTab(edgeIndex);
+                CreateLeftSideBarTab(edgeIndex,"");
 
                 data = edgesBetween[edgeIndex].data();
                 var table = document.getElementById("detailsTable"+edgeIndex);
@@ -933,24 +981,33 @@
         }
     }
 
-    function CreateLeftSideBarTab(tabIndex)
+    function CreateLeftSideBarTab(tabIndex, nodeType)
     {
         //create a new tab div  containing new table
         let detailsTableDiv = document.createElement('table');
         detailsTableDiv.id = "detailsTable" + tabIndex;
         detailsTableDiv.classList.add("paleBlueRows");
         detailsTableDiv.style.tableLayout="fixed";
-        detailsTableDiv.style.width = "110%";
+        detailsTableDiv.style.width = "107%";
         detailsTableDiv.innerHTML = "<tbody></tbody>";
 
         let scrollDiv = document.createElement('div');
         scrollDiv.id="leftTabs" + tabIndex;
         scrollDiv.classList.add("table-scroll");
         scrollDiv.append(detailsTableDiv);
-
-        let li = $( tabTemplate.replace( /#\{href\}/g, "#" + "leftTabs"+tabIndex ).replace( /#\{label\}/g, tabIndex ) );
+        var li="";
+        if(nodeType!="")
+        {
+            li = $( tabTemplate.replace( /#\{href\}/g, "#" + "leftTabs"+tabIndex ).replace( /#\{label\}/g, nodeType ) );
+        }
+        else
+        {
+            li = $( tabTemplate.replace( /#\{href\}/g, "#" + "leftTabs"+tabIndex ).replace( /#\{label\}/g, tabIndex+1 ) );
+        }
         leftSideBarTabs.find( ".ui-tabs-nav" ).append( li );
         leftSideBarTabs.append( "<div id='leftTabs" + tabIndex + "'>" + scrollDiv.innerHTML + "</div>");
+        leftSideBarTabs.tabs( "refresh" );
+        leftSideBarTabs.tabs("option", "active", 0);
     }
 
     /* concentric layout variables */
