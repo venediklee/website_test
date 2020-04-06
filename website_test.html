@@ -42,6 +42,7 @@
         scrollbar-width: none; /* Firefox */
         -ms-overflow-style: none;  /* Internet Explorer 10+ */
     }
+
     div.leftSideBar .ui-tabs-panel::-webkit-scrollbar /* WebKit */
     {
         width: 0;
@@ -192,22 +193,25 @@
     </ul>
     <div id="tabs-1">
         Enter Node ID: <input type="text" id="nodeKeyText" name="nodeID" size="50">
-        <select id="nodeTypeBox">
-            <option value="Drug">Drug</option>
-            <option value="EfoDisease">EfoDisease</option>
-            <option value="Protein">Protein</option>
-            <option value="Pathway">Pathway</option>
-            <option value="OrphanetDisease">OrphanetDisease</option>
-            <option value="ChemblMolecule">ChemblMolecule</option>
-        </select><br>
+        <select id="nodeTypeBox" onChange="showHide()">
+            {% for key, value in schema.items %}
+            <option value={{key}}>{{key}}</option>
+            {% endfor %}
+        </select>
+        {% for key, value in schema.items %}
+        <select id={{key}} hidden>
+            {% for i in value %}
+            <option value={{i}}>{{i}}</option>
+            {% endfor %}
+        </select>
+        {% endfor %}
         Search Depth<select id="searchDepth">
         <option value="1" selected="selected">1</option>
         <option value="2">2</option>
         <option value="3">3</option>
     </select>
-        Enrichment<input type="checkbox" id="enrichment" autocomplete="off" onclick=EnrichmentCheckboxAction()><br>
         <input type="submit" id="getnode" value="get node" onclick="GetNode()"><br>
-        <div id="enrichmentForm" hidden>
+        <div id="enrichmentForm">
             P-value threshold:<input id="pvalue" type="number" value=0.05>
             Max compounds per protein:<input id="topvalue" type="number" value=5>
         </div>
@@ -216,6 +220,7 @@
     <div id="tabs-2">
         Enter Query: <input type="text" id="queryText" name="query" size="50"><br>
         <input type="submit" value="execute query" onclick="ExecuteQuery()">
+        <input type="submit" value="filter nodes" onclick="FilterGraphNew()">
     </div>
 </div>
 
@@ -250,7 +255,8 @@
 
     <div class="bottom">
         <div class="roundedCorners">
-            <input type="submit" id="filter" value="filter nodes" onclick="FilterGraph()"><hr>
+            <input type="submit" id="filter" value="filter nodes" onclick="FilterGraph()">
+            <input id="revert" type="submit" value="revert filtering" onclick="revertFiltering()"><hr>
             <input type="submit" value="Download Graph" onclick="DownloadGraph()">
             <input type="submit" value="Download Style" onclick="DownloadStyle()">
             <input type="submit" value="Show Image" onclick="DownloadImage()">
@@ -264,9 +270,8 @@
 
 
 <script>
-    let base_address = document.getElementById("base_address").value;
-    console.log("BASE ADDR:" + base_address);
-    window.flag = false;
+
+    //showHide();
 
     // template for dynamically adding tabs
     let tabTemplate = "<li><a href='#{href}'>#{label}</a> <span class='ui-icon ui-icon-close' role='presentation'>Remove Tab</span></li>";
@@ -290,16 +295,33 @@
         });
     } );
 
-    function EnrichmentCheckboxAction() {
-        var checkBox = document.getElementById("enrichment");
-        var form = document.getElementById("enrichmentForm");
+    $(document).ready(function() {
+        window.current = document.getElementById("nodeTypeBox").value;
+        window.base_address = document.getElementById("base_address").value;
+        console.log("BASE ADDR:" + base_address);
+        window.flag = false;
         document.getElementById("pvalue").value = 0.05;
         topval = document.getElementById("topvalue").value = 5;
-        if (checkBox.checked) {
-            form.style.display = "block";
-        } else {
-            form.style.display = "none";
-        }
+        window.MAX_COUNTS = {"Drug": 30,
+            "Pathway": 30,
+            "Gene": 30,
+            "Disease": 30,
+            "Phenotype": 30,
+            "Intepro": 30,
+            "GeneOntology": 30};
+        window.filteredElements = {"elements": []};
+        window.filteredNodeSet = new Set();
+        showHide();
+    });
+
+    function clearFilteredElements() {
+        filteredElements = {"elements": []};
+        filteredNodeSet = new Set();
+    }
+
+    function addFilteredElement(ele) {
+        filteredElements["elements"].push({"data": ele});
+        filteredNodeSet.add(ele.id);
     }
 
     let checkForGraph = function() {
@@ -356,73 +378,148 @@
         window.open(image,'Image','width=largeImage.stylewidth,height=largeImage.style.height,resizable=1');
     }
 
-    function FilterGraph() {
-        try {
-            window.nodeSet = new Set();
-            window.compoundDict = {};
-            window.pValueThreshold = document.getElementById("pvalue").value;
-            window.noOfCompoundsPerProtein = document.getElementById("topvalue").value;
-            console.log(pValueThreshold);
-            console.log(noOfCompoundsPerProtein);
-            var a = cy.nodes().filter(filterNode);
-            a = a.union(cy.nodes().filter(filterCandidates));
-            var b = cy.edges().filter(filterEdge);
-            g = a.union(b);
-            cy.elements().remove();
-            cy.add(g);
-            RunLayout(cy);
+    function createNodeEdgeSets(r) {
+        window.parsed_nodes = {"Protein": [],
+            "Drug Candidate": [],
+            "Drug": [],
+            "Pathway": [],
+            "Disease": [],
+            "Interpro": [],
+            "GeneOntology": [],
+            "Phenotype": [],
+            "Gene": []}; // {<node_label>: [<nodes>]} (Will be used for filtering)
+        window.parsed_nodes_data = {}; // {<node_id>: <node_info>} (Will be used for access)
+        window.parsed_edges = {}; // {<edge_id>: <edge_info>}
+        window.activity_info = {}; // {<protein_id>: [<compound_nodes>]}
+        const r_elements = r;
+        for(var i=0; i<r_elements.length; i++) {
+            if (r_elements[i].data.type == "node") {
+                // Element is a node
+                var node = r_elements[i].data;
+                parsed_nodes_data[node.id] = node;
+                parsed_nodes[node.label].push(node);
+            }
+            else {
+                // Element is an edge (Edges are always after nodes in JSON)
+                parsed_edges[r_elements[i].data.id] = r_elements[i].data;
+                if(r_elements[i].data.relation_type == "ACTIVITY") {
+                    var srcId = r_elements[i].data.source;
+                    var trgId = r_elements[i].data.target;
+                    var src = parsed_nodes_data[srcId];
+                    var trg = parsed_nodes_data[trgId];
 
-        } catch (e) {
-            console.log(e);
-        }
-    }
-
-    function filterCandidates(ele) {
-        if (ele.data("label") == "Drug Candidate" && nodeSet.has(ele.data("id"))) return true;
-        return false;
-    }
-
-    function filterEdge(ele) {
-        var src = ele.data("source");
-        var trg = ele.data("target");
-        if (nodeSet.has(src) && nodeSet.has(trg)) return true;
-        return false;
-    }
-
-    function filterNode(ele) {
-        var label = ele.data("label");
-        if (label == "Protein") {
-            nodeSet.add(ele.data("id"));
-            var x = ele.connectedEdges("[relation_type = 'ACTIVITY']");
-            var co = [];
-            for (var i = 0; i < x.length; i++) {
-                var sourceID = x[i].data("source");
-                var sourceNode = cy.getElementById(sourceID);
-                if (sourceNode.data("score") > 0 && sourceNode.data("p_value") < pValueThreshold) {
-                    co.push(sourceNode);
+                    if(src.label == "Protein" && trg.label == "Drug Candidate") {
+                        if (!(srcId in activity_info)) {
+                            // Key does not exist
+                            activity_info[srcId] = [];
+                        }
+                        activity_info[srcId].push(trg);
+                    } else if (trg.label == "Protein" && src.label == "Drug Candidate") {
+                        if (!(trgId in activity_info)) {
+                            // Key does not exist
+                            activity_info[trgId] = [];
+                        }
+                        activity_info[trgId].push(src);
+                    }
                 }
             }
-            co.sort(compareCompounds);
-            for (var i = 0; i < co.length; i++) {
-                if (i >= noOfCompoundsPerProtein) break;
-                window.nodeSet.add(co[i].data("id"));
-            }
-            return true;
         }
-        if (label == "Drug") {
-            nodeSet.add(ele.data("id"));
-            return true;
-        }
-        if (label != "Drug Candidate")
-            if (ele.data("p_value") < pValueThreshold) {
-                nodeSet.add(ele.data("id"));
-                return true;
-            }
-        return false;
+        console.log("Created node and edge sets");
+        sortNodes();
+        console.log("Sorted nodes");
     }
 
-    function compareCompounds(ele1, ele2) {
-        return ele2.data("score") - ele1.data("score");
+    function sortNodes() {
+        for (var key in parsed_nodes) {
+            // No need to sort Drug Candidates and Proteins.
+            if (key != "Drug Candidate" && key != "Protein") {
+                parsed_nodes[key].sort(compareNodes);
+            }
+        }
+        for (var key in activity_info) {
+            activity_info[key].sort(compareNodes);
+        }
+    }
+
+    function compareNodes(ele1, ele2) {
+        return ele2.score - ele1.score;
+    }
+
+    function filterGraphNew() {
+        var nodesToShow = new Set();
+        var counts = {"Drug": 0,
+            "Pathway": 0,
+            "Gene": 0,
+            "Disease": 0,
+            "Phenotype": 0,
+            "Interpro": 0,
+            "GeneOntology": 0};
+        clearFilteredElements();
+        var pValueThreshold = document.getElementById("pvalue").value;
+        var noOfCompoundsPerProtein = document.getElementById("topvalue").value;
+        console.log(parsed_nodes);
+        for(var key in parsed_nodes) {
+            // Filter every node except Drug Candidates.
+            // Protein filtering was done in back-end.
+            if (key != "Drug Candidate" && key != "Protein") {
+                var currentList = parsed_nodes[key];
+                var currentIndex = 0;
+                while (counts[key] < MAX_COUNTS[key] && currentIndex < currentList.length) {
+                    var ele = currentList[currentIndex];
+                    if (ele.p_value < pValueThreshold) {
+                        addFilteredElement(ele);
+                        counts[key]++;
+                    }
+                    currentIndex++;
+                }
+            }
+            else if (key == "Protein") {
+                var currentList = parsed_nodes[key];
+                for (var i=0; i<currentList.length; i++) {
+                    addFilteredElement(currentList[i]);
+                }
+            }
+        }
+        console.log("Filtered nodes");
+        // Filter drug candidates
+        for(var key in activity_info) {
+            var currentList = activity_info[key];
+            var count = 0;
+            var currentIndex = 0;
+            while (count < noOfCompoundsPerProtein && currentIndex < currentList.length) {
+                var ele = currentList[currentIndex];
+                if (ele.p_value < pValueThreshold) {
+                    addFilteredElement(ele);
+                    count++;
+                }
+                currentIndex++;
+            }
+        }
+        console.log("Filtered candidates");
+        // Filter edges
+        for(var edgeId in parsed_edges) {
+            var edge = parsed_edges[edgeId];
+            if (filteredNodeSet.has(edge.source) && filteredNodeSet.has(edge.target)) {
+                addFilteredElement(edge);
+            }
+        }
+        console.log("Filtered edges");
+        cy.elements().remove();
+        cy.add(filteredElements.elements);
+        console.log(filteredNodeSet);
+    }
+
+    function showHide() {
+        console.log(window.current);
+        document.getElementById(window.current).style.display = "none";
+        window.current = document.getElementById("nodeTypeBox").value;
+        document.getElementById(window.current).style.display = "block";
+    }
+
+    function revertFiltering() {
+        cy.elements().remove();
+        cy.add(els);
+        RunLayout(cy);
     }
 
 
@@ -431,23 +528,30 @@
         const searchDepth = document.getElementById("searchDepth");
         const selectedDepth = searchDepth.options[searchDepth.selectedIndex].value;
         const nodeType = document.getElementById("nodeTypeBox");
-        const selectedNodeType = nodeType.options[nodeType.selectedIndex].value;
-        document.getElementById("enrichment").disabled = true;
+        const selectedNodeType = nodeType.value;
+        const selectedField = document.getElementById(selectedNodeType).value;
         document.getElementById("getnode").disabled = true;
-
+        document.getElementById("searchDepth").disabled = true;
 
         let address = base_address;
         var client = new HttpClient();
 
         if (selectedDepth == 1) {
-            address = address + "search/?key=" + document.getElementById("nodeKeyText").value + "&type=" + selectedNodeType + "&enrichment=" + document.getElementById("enrichment").checked;
+            address = address + "search/?key=" + document.getElementById("nodeKeyText").value + "&type=" + selectedNodeType + "&field=" + selectedField + "&enrichment=true";
+            console.log(address);
         }
         else {
-            address = address + "search/?key=" + document.getElementById("nodeKeyText").value + "&type=" + selectedNodeType + "&depth=" + selectedDepth + "&enrichment=" + document.getElementById("enrichment").checked;
+            address = address + "search/?key=" + document.getElementById("nodeKeyText").value + "&type=" + selectedNodeType + "&depth=" + selectedDepth + "&field=" + selectedField + "&enrichment=true";
+            console.log(address);
         }
         client.get(address, function (response) {
             hideLoader();
             CreateGraph(response);
+        }, function (response) {
+            hideLoader();
+            document.getElementById("searchDepth").disabled = false;
+            document.getElementById("getnode").disabled = false;
+            alert(response.split(':')[1]);
         });
     }
 
@@ -461,13 +565,15 @@
         loader.style.visibility = "hidden";
     }
 
-
     let CreateGraph = function (response) {
         // do something with response
-        /*console.log(response);
+        console.log("RESPONSE");
+        console.log(response);
         const response_parsed = JSON.parse(response.slice(13, -1));
+        console.log("PARSED RESPONSE");
+        console.log(response_parsed);
+        createNodeEdgeSets(response_parsed);
         if(response_parsed.length == 0){
-            document.getElementById("enrichment").disabled = false;
             document.getElementById("getnode").disabled = false;
             alert("The query result is empty! Make sure you have searched with correct paramaters");
             return false;
@@ -476,7 +582,7 @@
         if (flag == true) {
             cy.unmount();
             cy.destroy();
-        }*/
+        }
 
         try {
             window.cy = cytoscape({
@@ -487,6 +593,7 @@
                     style: {
                         "content": "data(label)",
                         'shape': 'triangle',
+                        'background-color': 'red',
                         "font-size": "12px",
                         "text-valign": "center",
                         "text-halign": "center",
@@ -496,8 +603,8 @@
                         "color": "#fff",
                         "overlay-padding": "6px",
                         "z-index": "10"
-                         }
-                    },
+                    }
+                },
                     {
                         selector: 'node[label="Drug"]', // Drug: Compound
                         style: {
@@ -515,7 +622,15 @@
                         }
                     },
                     {
-                        selector: 'node[label="Disease"]', // TODO Disease, content unknown
+                        selector: 'node[label="Gene"]', // Gene
+                        style: {
+                            "content": "data(display_name)",
+                            "shape": "ellipse",
+                            'background-color': '#2b580c'
+                        }
+                    },
+                    {
+                        selector: 'node[label="Disease"]', // Disease
                         style: {
                             "content": "data(display_name)",
                             'shape': 'triangle',
@@ -527,7 +642,7 @@
                         style: {
                             "content": "data(display_name)",
                             'shape': 'tag',
-                            'background-color': 'green'
+                            'background-color': '#639a67'
                         }
                     },
                     {
@@ -547,6 +662,22 @@
                         }
                     },
                     {
+                        selector: 'node[label="Interpro"]', // Phenotype
+                        style: {
+                            "content": "data(display_name)",
+                            'shape': 'ellipse',
+                            'background-color': '#000839',
+                        }
+                    },
+                    {
+                        selector: 'node[label="GeneOntology"]', // Phenotype
+                        style: {
+                            "content": "data(display_name)",
+                            'shape': 'ellipse',
+                            'background-color': '#d9bf77',
+                        }
+                    },
+                    {
                         selector: 'edge',
                         style: {
                             "curve-style": 'bezier',
@@ -563,19 +694,23 @@
             console.log(response);
             return;
         }
-        if (document.getElementById("enrichment").checked) {
-            FilterGraph();
+        const searchDepth = document.getElementById("searchDepth");
+        const selectedDepth = searchDepth.options[searchDepth.selectedIndex].value;
+        if (selectedDepth != 1) {
+            start = new Date().getTime();
+            filterGraphNew();
+            end = new Date().getTime();
+            console.log("Filter time:" + (end-start)/1000);
             document.getElementById("filter").disabled = false;
-            //document.getElementById("revert").disabled = false;
+            //cy.add(window.els);
         } else {
-            document.getElementById("filter").disabled = true;
-            //document.getElementById("revert").disabled = true;
+            cy.add(window.els);
         }
+        document.getElementById("searchDepth").disabled = false;
+        //document.getElementById("revert").disabled = false;
         flag = true;
-        document.getElementById("enrichment").disabled = false;
         document.getElementById("getnode").disabled = false;
         cy.mount(document.getElementById('cy'));
-
 
         //set and highlight searched node
         cy.nodes().slice(0,1).style({'shape' : 'star',  "text-outline-color": 'red'});
@@ -754,11 +889,15 @@
     CreateGraph("");
 
     function ExecuteQuery() {
+        activateLoader();
         let address = base_address + "search/cypher?q=";
         var client = new HttpClient();
-
         client.get(address + document.getElementById("queryText").value, function (response) {
+            hideLoader();
             CreateGraph(response)
+        }, function (response) {
+            hideLoader();
+            alert(response.split(':')[1]);
         });
     }
 
@@ -898,12 +1037,15 @@
     }
 
     var HttpClient = function () {
-        this.get = function (aUrl, aCallback, headerName = "", headerValue = "") {
+        this.get = function (aUrl, aCallback, failed_callback, headerName = "", headerValue = "") {
             var anHttpRequest = new XMLHttpRequest();
 
             anHttpRequest.onreadystatechange = function () {
                 if (anHttpRequest.readyState == 4 && anHttpRequest.status == 200) {
                     aCallback(anHttpRequest.responseText);
+                }
+                if (anHttpRequest.readyState == 4 && anHttpRequest.status == 400) {
+                    failed_callback(anHttpRequest.responseText);
                 }
             }
 
@@ -916,6 +1058,7 @@
             anHttpRequest.send(null);
         }
     }
+
 
 </script>
 </body>
