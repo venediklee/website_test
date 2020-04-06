@@ -696,7 +696,7 @@
                             "control-point-step-size": 22,
                             'width': 3,
                             'opacity': 0.5,
-                            'line-color': '#408705'
+                            'line-color': '#03fcf8'
                         }
                     }
                 ]
@@ -960,6 +960,9 @@
     var phenotypeCount=0;
     var drugCandidateCount=0;
     var pathwayCount=0;
+    var geneCount=0;
+    var interproCount=0;
+    var geneOntologyCount=0;
     function RunLayout(cy) {
         _layoutSelection = document.getElementById("layoutSelection");
         if (_layoutSelection.options[_layoutSelection.selectedIndex].value == "fcose") {
@@ -985,6 +988,9 @@
             diseaseCount=0;
             drugCount=0;
             drugCandidateCount=0;
+            geneCount=0;
+            interproCount=0;
+            geneOntologyCount=0;
 
             var isCenteringHighDegreeNodesDisabled = spinner.spinner( "option", "disabled" );
 
@@ -1003,25 +1009,40 @@
                     {
                         if(key=="label")
                         {
-                            if(data[key]=="Protein")
+                            if(data[key]=="Disease")
                             {
-                                proteinCount++;
-                                typeMultiplier = 1000 - proteinCount/2;
-                            }
-                            else if(data[key]=="Pathway")
-                            {
-                                pathwayCount++;
-                                typeMultiplier = 800 - pathwayCount/2;
+                                diseaseCount++;
+                                typeMultiplier = 1600 - diseaseCount/2;
                             }
                             else if(data[key]=="Phenotype")
                             {
                                 phenotypeCount++;
-                                typeMultiplier = 600 - phenotypeCount/2;
+                                typeMultiplier = 1400 - phenotypeCount/2;
                             }
-                            else if(data[key]=="Disease")
+                            else if(data[key]=="Gene")
                             {
-                                diseaseCount++;
-                                typeMultiplier = 400 - diseaseCount/2;
+                                geneCount++;
+                                typeMultiplier = 1200 - geneCount/2;
+                            }
+                            else if(data[key]=="Protein")
+                            {
+                                proteinCount++;
+                                typeMultiplier = 1000 - proteinCount/2;
+                            }
+                            else if(data[key]=="Interpro")
+                            {
+                                interproCount++;
+                                typeMultiplier = 800 - interproCount/2;
+                            }
+                            else if(data[key]=="GeneOntology")
+                            {
+                                geneOntologyCount++;
+                                typeMultiplier = 600 - geneOntologyCount/2;
+                            }
+                            else if(data[key]=="Pathway")
+                            {
+                                pathwayCount++;
+                                typeMultiplier = 400 - pathwayCount/2;
                             }
                             else if(data[key]=="Drug")
                             {
