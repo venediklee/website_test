@@ -4,17 +4,7 @@
 
 <head>
     <title>Tutorial 1: Getting Started</title>
-    <script src="cytoscape.min.js"></script>
 
-
-    <script src="https://unpkg.com/numeric/numeric-1.2.6.js"></script>
-    <script src="https://unpkg.com/layout-base/layout-base.js"></script>
-    <script src="https://unpkg.com/cose-base/cose-base.js"></script>
-    <script src="cytoscape-cxtmenu.js"></script>
-
-    <link rel="stylesheet" href="jquery-ui-1.12.1.custom/jquery-ui.min.css">
-    <script src="jquery-ui-1.12.1.custom/external/jquery/jquery.js"></script>
-    <script src="jquery-ui-1.12.1.custom/jquery-ui.min.js"></script>
 </head>
 
 <style>
@@ -310,13 +300,562 @@
 </div>
 
 <div id="cy"></div>
+
+
+<script src="cytoscape.min.js"></script>
+
+<script src="https://unpkg.com/numeric/numeric-1.2.6.js"></script>
+<script src="https://unpkg.com/layout-base/layout-base.js"></script>
+<script src="https://unpkg.com/cose-base/cose-base.js"></script>
+<script src="cytoscape-cxtmenu.js"></script>
+
+<link rel="stylesheet" href="jquery-ui-1.12.1.custom/jquery-ui.min.css">
+<script src="jquery-ui-1.12.1.custom/external/jquery/jquery.js"></script>
+<script src="jquery-ui-1.12.1.custom/jquery-ui.min.js"></script>
+
 <script></script>
 
 
 
 <script>
 
-    //showHide();
+    // Only this class should be used to modify the left tabs and the tables.
+    class LeftSideHandler
+    {
+        constructor()
+        {
+            this.tableNo = 0;
+            this.leftSideBarTabCount = 0;
+        }
+        ClearLeftSideBar()
+        {
+            //delete previously created tabs
+            for(let tabIndex = 0 ; tabIndex < this.leftSideBarTabCount; tabIndex++)
+            {
+                let panelId = leftSideBarTabs.find( ".ui-tabs-tab" ).remove().attr( "aria-controls" );
+                //$( "#" + panelId ).remove();
+                leftSideBarTabs.tabs( "refresh" );
+                var table = document.getElementById("detailsTable"+tabIndex);
+                var rowCount = table.rows.length;
+
+                for (var x = rowCount - 1; x >= 0; x--) {
+                    table.deleteRow(x);
+                }
+            }
+            this.leftSideBarTabCount = 0;
+            this.tableNo = 0;
+        }
+
+        CreateLeftSideBarTab(tab_name)
+        {
+            this.leftSideBarTabCount++;
+            //create a new tab div  containing new table
+            let detailsTableDiv = document.createElement('table');
+            detailsTableDiv.id = "detailsTable" + this.tableNo;
+            detailsTableDiv.classList.add("paleBlueRows");
+            detailsTableDiv.style.tableLayout="fixed";
+            detailsTableDiv.style.width = "107%";
+            detailsTableDiv.innerHTML = "<tbody></tbody>";
+
+            let scrollDiv = document.createElement('div');
+            scrollDiv.id="leftTabs" + this.tableNo;
+            scrollDiv.classList.add("table-scroll");
+            scrollDiv.append(detailsTableDiv);
+            var li="";
+            if(tab_name!="")
+            {
+                li = $( tabTemplate.replace( /#\{href\}/g, "#" + "leftTabs"+this.tableNo ).replace( /#\{label\}/g, tab_name ) );
+            }
+            else
+            {
+                li = $( tabTemplate.replace( /#\{href\}/g, "#" + "leftTabs"+this.tableNo ).replace( /#\{label\}/g, this.tableNo+1 ) );
+            }
+            leftSideBarTabs.find( ".ui-tabs-nav" ).append( li );
+            leftSideBarTabs.append( "<div id='leftTabs" + this.tableNo + "'>" + scrollDiv.innerHTML + "</div>");
+            leftSideBarTabs.tabs( "refresh" );
+            leftSideBarTabs.tabs("option", "active", 0);
+        }
+
+        CreateTable(columns, values, table_name)
+        {
+            this.CreateLeftSideBarTab(table_name);
+            var table = document.getElementById("detailsTable" + this.tableNo);
+            for (var i in columns) {
+                if (columns[i] != "type" && columns[i] != "id") {var row = table.insertRow(-1);
+                    row.innerHTML = "<th>" + columns[i] + "</th>";
+                    var cell1 = row.insertCell(-1); // 0 will put columns in reverse order for some reason
+                    if(values[i]["HTML_flag"] == undefined)
+                    {
+                        if (isNaN(values[i]))
+                            cell1.innerText = JSON.stringify(values[i]).slice(1,-1).replace(/\"/g, "").replace(/,/g, ", ");
+                        else
+                            cell1.innerText = values[i];
+                    }
+                    else
+                    {
+                        if(values[i]["HTML_flag"])
+                            cell1.innerHTML = (values[i]["value"]);
+                        else
+                            cell1.innerText = JSON.stringify(values[i]["value"]).replace(/\"/g, "").replace(/,/g, ", ");;
+                    }
+                }
+            }
+            this.tableNo++;
+        }
+    }
+
+    // This class is used for handling advanced search functionalities.
+    class AdvancedHandler {
+        constructor()
+        {
+            this.cyto = null;
+            this.numId = 1;
+            this.currentNodeId = "-1";
+            this.checkbox_list = [];
+            this.noOfProteins = 0;
+            this.noOfGenes = 0;
+
+            this.checkboxes = document.getElementById("advancedCheckboxes");
+            this.proteinCheckbox = document.getElementById("proteinCheckbox");
+            this.drugCheckbox = document.getElementById("drugCheckbox");
+            this.chemblMoleculeCheckbox = document.getElementById("chemblMoleculeCheckbox");
+            this.pathwayCheckbox = document.getElementById("pathwayCheckbox");
+            this.diseaseCheckbox = document.getElementById("diseaseCheckbox");
+            this.interproCheckbox = document.getElementById("interproCheckbox");
+            this.geneOntologyCheckbox = document.getElementById("geneOntologyCheckbox");
+            this.phenotypeCheckbox = document.getElementById("phenotypeCheckbox");
+            this.geneCheckbox = document.getElementById("geneCheckbox");
+
+            this.checkbox_list.push(this.proteinCheckbox);
+            this.checkbox_list.push(this.drugCheckbox);
+            this.checkbox_list.push(this.chemblMoleculeCheckbox);
+            this.checkbox_list.push(this.pathwayCheckbox);
+            this.checkbox_list.push(this.diseaseCheckbox);
+            this.checkbox_list.push(this.interproCheckbox);
+            this.checkbox_list.push(this.geneOntologyCheckbox);
+            this.checkbox_list.push(this.phenotypeCheckbox);
+            this.checkbox_list.push(this.geneCheckbox);
+
+            this.checkbox_div_list = [];
+
+            this.proteinCheckboxDiv = document.getElementById("proteinCheckboxDiv");
+            this.drugCheckboxDiv = document.getElementById("drugCheckboxDiv");
+            this.chemblMoleculeCheckboxDiv = document.getElementById("chemblMoleculeCheckboxDiv");
+            this.pathwayCheckboxDiv = document.getElementById("pathwayCheckboxDiv");
+            this.diseaseCheckboxDiv = document.getElementById("diseaseCheckboxDiv");
+            this.interproCheckboxDiv = document.getElementById("interproCheckboxDiv");
+            this.geneOntologyCheckboxDiv = document.getElementById("geneOntologyCheckboxDiv");
+            this.phenotypeCheckboxDiv = document.getElementById("phenotypeCheckboxDiv");
+            this.geneCheckboxDiv = document.getElementById("geneCheckboxDiv");
+
+            this.checkbox_div_list.push(this.proteinCheckboxDiv);
+            this.checkbox_div_list.push(this.drugCheckboxDiv);
+            this.checkbox_div_list.push(this.chemblMoleculeCheckboxDiv);
+            this.checkbox_div_list.push(this.pathwayCheckboxDiv);
+            this.checkbox_div_list.push(this.diseaseCheckboxDiv);
+            this.checkbox_div_list.push(this.interproCheckboxDiv);
+            this.checkbox_div_list.push(this.geneOntologyCheckboxDiv);
+            this.checkbox_div_list.push(this.phenotypeCheckboxDiv);
+            this.checkbox_div_list.push(this.geneCheckboxDiv);
+
+            this.resetSend_div = document.getElementById("resetSendButtons");
+            this.selectSource_div = document.getElementById("selectSource");
+
+            this.nodeType = document.getElementById("nodeTypeBoxAdvanced");
+            this.sourceNodeTextbox = document.getElementById("nodeKeyTextAdvanced");
+            this.advancedCurrent = document.getElementById("nodeTypeBoxAdvanced").value + "Advanced";
+            this.sendRequestButton = document.getElementById("sendRequestButtonAdvanced");
+            this.sendRequestButton.disabled = true;
+            this.showHideAdvanced();
+        }
+
+        clickOnNode(node) {
+            var data = node.data();
+            if(data["type"] == "edge") return;
+            if(data["id"] == this.currentNodeId) {
+                this.getCheckedCheckboxes();
+                return;
+            }
+
+            this.currentNodeId = data["id"];
+            console.log("id of node:" + data["id"]);
+
+            if (this.currentNodeId == "source") {
+                this.showCheckboxesSource(data["label"]);
+            } else {
+                this.showCheckboxesNonSource(data["label"]);
+            }
+
+        }
+
+        addPathAction() {
+            var checked = this.getCheckedCheckboxes();
+            for(var i=0; i<checked.length; i++) {
+                this.createNodeAndEdge(checked[i]);
+            }
+            RunLayout(this.cyto);
+            this.clearAllCheckboxes();
+            this.hideAllCheckboxes();
+            this.currentNodeId = -1;
+        }
+
+        showCheckboxesNonSource(label) {
+            this.clearAllCheckboxes();
+            this.hideAllCheckboxes();
+            this.checkboxes.style.display = "inline-block";
+
+            switch (label) {
+                case "Protein":
+                    this.proteinCheckboxDiv.style.display = "inline-block";
+                    this.drugCheckboxDiv.style.display = "inline-block";
+                    this.chemblMoleculeCheckboxDiv.style.display = "inline-block";
+                    this.pathwayCheckboxDiv.style.display = "inline-block";
+                    this.interproCheckboxDiv.style.display = "inline-block";
+                    this.geneOntologyCheckboxDiv.style.display = "inline-block";
+                    this.geneCheckboxDiv.style.display = "inline-block";
+                    break;
+                case "Gene":
+                    this.diseaseCheckboxDiv.style.display = "inline-block";
+                    this.phenotypeCheckboxDiv.style.display = "inline-block";
+                    this.proteinCheckboxDiv.style.display = "inline-block";
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        showCheckboxesSource(label) {
+            this.clearAllCheckboxes();
+            this.hideAllCheckboxes();
+            this.checkboxes.style.display = "inline-block";
+
+            switch (label) {
+                case "Protein":
+                    this.proteinCheckboxDiv.style.display = "inline-block";
+                    this.drugCheckboxDiv.style.display = "inline-block";
+                    this.chemblMoleculeCheckboxDiv.style.display = "inline-block";
+                    this.pathwayCheckboxDiv.style.display = "inline-block";
+                    this.interproCheckboxDiv.style.display = "inline-block";
+                    this.geneOntologyCheckboxDiv.style.display = "inline-block";
+                    this.geneCheckboxDiv.style.display = "inline-block";
+                    break;
+                case "Drug":
+                    this.proteinCheckboxDiv.style.display = "inline-block";
+                    break;
+                case "ChemblMolecule":
+                    this.proteinCheckboxDiv.style.display = "inline-block";
+                    break;
+                case "Pathway":
+                    this.proteinCheckboxDiv.style.display = "inline-block";
+                    break;
+                case "Disease":
+                    this.geneCheckboxDiv.style.display = "inline-block";
+                    break;
+                case "Interpro":
+                    this.proteinCheckboxDiv.style.display = "inline-block";
+                    break;
+                case "GeneOntology":
+                    this.proteinCheckboxDiv.style.display = "inline-block";
+                    break;
+                case "Phenotype":
+                    this.geneCheckboxDiv.style.display = "inline-block";
+                    break;
+                case "Gene":
+                    this.diseaseCheckboxDiv.style.display = "inline-block";
+                    this.phenotypeCheckboxDiv.style.display = "inline-block";
+                    this.proteinCheckboxDiv.style.display = "inline-block";
+                    break;
+            }
+        }
+
+        createNodeAndEdge(target_label) {
+            this.numId++;
+            var node = {
+                group: "nodes",
+                data: {
+                    id: this.numId,
+                    label: target_label,
+                    display_name: target_label,
+                    type: "node"
+                }
+            };
+
+            this.cyto.add(node);
+            if (target_label == "Protein") {
+                this.noOfProteins++;
+            }
+            else if (target_label == "Gene") {
+                this.noOfGenes++;
+            }
+
+            this.numId++;
+            var edge = {
+                group: "edges",
+                data: {
+                    id: this.numId.toString(),
+                    source: this.currentNodeId,
+                    target: this.numId - 1,
+                    type: "edge"
+                }
+            }
+
+            this.cyto.add(edge);
+        }
+
+        getCheckedCheckboxes() {
+            var checklist = [];
+            for (var i=0; i<this.checkbox_list.length; i++) {
+                var checkbox = this.checkbox_list[i];
+                if (checkbox.checked) {
+                    checklist.push(checkbox.value);
+                }
+            }
+            console.log("CHECKLIST");
+            console.log(checklist);
+            return checklist;
+        }
+
+        showCheckboxes(label) {
+            this.clearAllCheckboxes();
+            this.hideAllCheckboxes();
+            this.checkboxes.style.display = "inline-block";
+            for (var i=0; i<this.checkbox_div_list.length; i++) {
+                var checkbox = this.checkbox_div_list[i];
+                checkbox.style.display = "inline-block";
+            }
+        }
+
+        hideAllCheckboxes() {
+            this.checkboxes.style.display = "none";
+            for (var i=0; i<this.checkbox_div_list.length; i++) {
+                var checkbox = this.checkbox_div_list[i];
+                checkbox.style.display = "none";
+            }
+        }
+
+        clearAllCheckboxes() {
+            for (var i=0; i<this.checkbox_list.length; i++) {
+                var checkbox = this.checkbox_list[i];
+                checkbox.checked = false;
+            }
+        }
+
+        createAdvancedCytoscapeElement()
+        {
+            this.cyto = cytoscape({
+                container: undefined,
+                elements: null,
+                style: [
+                    {
+                        selector: 'node',
+                        style: {
+                            "content": "data(label)",
+                            'shape': 'triangle',
+                            'background-color': 'red',
+                            "font-size": "12px",
+                            "text-valign": "center",
+                            "text-halign": "center",
+                            "background-color": "#555",
+                            "text-outline-color": "#555",
+                            "text-outline-width": "2px",
+                            "color": "#fff",
+                            "overlay-padding": "6px",
+                            "z-index": "10"
+                        }
+                    },
+                    {
+                        selector: 'node[label="Drug"]',
+                        style: {
+                            "content": "data(display_name)",
+                            'shape': 'hexagon',
+                            'background-color': 'red'
+                        }
+                    },
+                    {
+                        selector: 'node[label="Protein"]',
+                        style: {
+                            "content": "data(display_name)",
+                            "shape": "ellipse",
+                            'background-color': 'blue'
+                        }
+                    },
+                    {
+                        selector: 'node[label="Gene"]',
+                        style: {
+                            "content": "data(display_name)",
+                            "shape": "diamond",
+                            'background-color': '#2b580c'
+                        }
+                    },
+                    {
+                        selector: 'node[label="Disease"]',
+                        style: {
+                            "content": "data(display_name)",
+                            'shape': 'triangle',
+                            'background-color': 'orange'
+                        }
+                    },
+                    {
+                        selector: 'node[label="Phenotype"]',
+                        style: {
+                            "content": "data(display_name)",
+                            'shape': 'tag',
+                            'background-color': '#639a67'
+                        }
+                    },
+                    {
+                        selector: 'node[label="Drug Candidate"]',
+                        style: {
+                            "content": "data(display_name)",
+                            'shape': 'square',
+                            'background-color': 'purple',
+                        }
+                    },
+                    {
+                        selector: 'node[label="ChemblMolecule"]',
+                        style: {
+                            "content": "data(display_name)",
+                            'shape': 'square',
+                            'background-color': 'purple',
+                        }
+                    },
+                    {
+                        selector: 'node[label="Pathway"]',
+                        style: {
+                            "content": "data(display_name)",
+                            'shape': 'rhomboid',
+                            'background-color': 'yellow',
+                        }
+                    },
+                    {
+                        selector: 'node[label="Interpro"]',
+                        style: {
+                            "content": "data(display_name)",
+                            'shape': 'octagon',
+                            'background-color': '#000839',
+                        }
+                    },
+                    {
+                        selector: 'node[label="GeneOntology"]',
+                        style: {
+                            "content": "data(display_name)",
+                            'shape': 'vee',
+                            'background-color': '#d9bf77',
+                        }
+                    },
+                    {
+                        selector: 'edge',
+                        style: {
+                            'content': function (ele)
+                            {
+                                return cy.edges('[source = "' + ele.data("source") + '"][target = "' + ele.data("target") + '"]').length;
+                            },
+                            'width': 3,
+                            'opacity': 0.5,
+                            'line-color': '#4287f5'
+                        }
+                    },
+                    {
+                        selector: ':loop',
+                        style: {
+                            "curve-style": 'bezier',
+                            "control-point-step-size": 22,
+                            'width': 3,
+                            'opacity': 0.5,
+                            'line-color': '#03fcf8'
+                        }
+                    }
+                ]
+            });
+            this.cyto.on("click", function(event) {
+                var eventTarget = event.target;
+                if(eventTarget == advanced_handler.cyto) {
+                    advanced_handler.hideAllCheckboxes();
+                    //setNodeColor(currentNodeId);
+                    advanced_handler.currentNodeId = "-1";
+                } else {
+                    advanced_handler.clickOnNode(eventTarget);
+                }
+            })
+        }
+
+        showHideAdvanced()
+        {
+            console.log(this.advancedCurrent);
+            document.getElementById(this.advancedCurrent).style.display = "none";
+            this.advancedCurrent = document.getElementById("nodeTypeBoxAdvanced").value + "Advanced";
+            document.getElementById(this.advancedCurrent).style.display = "inline-block";
+        }
+
+        sourceClickAction() {
+            this.selectSource_div.style.display = "none";
+            var eles = [];
+            const selectedNodeType = this.nodeType.options[this.nodeType.selectedIndex].value;
+            const selectedKeyId = selectedNodeType + "Advanced";
+            const selectedKey = document.getElementById(selectedKeyId).value;
+            eles.push({
+                group: "nodes",
+                data: {
+                    id: "source",
+                    label: selectedNodeType.toString(),
+                    display_name: this.sourceNodeTextbox.value,
+                    key: selectedKey
+                }
+            })
+            this.createGraph(eles);
+            this.sendRequestButton.disabled = false;
+            this.resetSend_div.style.display = "block";
+
+        }
+
+        sendAdvancedRequest() {
+            console.log("sending advanced request");
+            const http = new XMLHttpRequest();
+            http.open("POST", base_address + "search/advanced");
+            http.setRequestHeader("Content-type", "application/json");
+            const params = this.cyto.json();
+            console.log(JSON.stringify(params));
+            http.send(JSON.stringify(params));
+            http.onload = function() {
+                CreateGraph(http.response);
+            }
+        }
+
+        unmount() {
+            this.reset();
+            if (this.cyto != null) {
+                this.cyto.unmount();
+                this.cyto.destroy();
+            }
+        }
+
+        createGraph(eles) {
+            if (flag == true) {
+                window.cy.unmount();
+                window.cy.destroy();
+            }
+            window.advanced_flag = true;
+            this.createAdvancedCytoscapeElement();
+            this.cyto.mount(document.getElementById('cy'));
+            this.cyto.add(eles);
+            RunLayout(this.cyto);
+        }
+
+        reset()
+        {
+            left_side_handler.ClearLeftSideBar();
+            this.selectSource_div.style.display = "block";
+            window.cy.elements().remove();
+            if (this.cyto != null) {
+                this.cyto.elements().remove();
+            }
+            this.sendRequestButton.disabled = true;
+            this.clearAllCheckboxes();
+            this.hideAllCheckboxes();
+            this.currentNodeId = -1;
+        }
+
+    }
 
     // template for dynamically adding tabs
     let tabTemplate = "<li><a href='#{href}'>#{label}</a></li>";
@@ -326,7 +865,7 @@
     spinner.spinner( "value", 20 );
     spinner.spinner( "option", "disabled", true );
     var leftSideBarTabs;//keep variable to dynamically add new tabs later
-    var leftSideBarTabCount=1;//used for removing active tabs
+    var left_side_handler = new LeftSideHandler();
     $( function() {
         $( "#tabs" ).tabs();
         leftSideBarTabs = $( "#leftSideBar" ).tabs();
@@ -343,22 +882,146 @@
 
     $(document).ready(function() {
         window.current = document.getElementById("nodeTypeBox").value;
+        window.advanced_handler = new AdvancedHandler();
         window.base_address = document.getElementById("base_address").value;
         console.log("BASE ADDR:" + base_address);
         window.flag = false;
+        window.advanced_flag = false;
         document.getElementById("pvalue").value = 0.05;
         topval = document.getElementById("topvalue").value = 5;
-        window.MAX_COUNTS = {"Drug": 30,
-            "Pathway": 30,
-            "Gene": 30,
-            "Disease": 30,
-            "Phenotype": 30,
-            "Intepro": 30,
-            "GeneOntology": 30};
         window.filteredElements = {"elements": []};
         window.filteredNodeSet = new Set();
         showHide();
+        createCytoscapeElement();
     });
+
+    function createCytoscapeElement() {
+        window.cy = cytoscape({
+            container: undefined,
+            elements: null,
+            style: [
+                {
+                    selector: 'node',
+                    style: {
+                        "content": "data(label)",
+                        'shape': 'triangle',
+                        'background-color': 'red',
+                        "font-size": "12px",
+                        "text-valign": "center",
+                        "text-halign": "center",
+                        "background-color": "#555",
+                        "text-outline-color": "#555",
+                        "text-outline-width": "2px",
+                        "color": "#fff",
+                        "overlay-padding": "6px",
+                        "z-index": "10"
+                    }
+                },
+                {
+                    selector: 'node[label="Drug"]',
+                    style: {
+                        "content": "data(display_name)",
+                        'shape': 'hexagon',
+                        'background-color': 'red'
+                    }
+                },
+                {
+                    selector: 'node[label="Protein"]',
+                    style: {
+                        "content": "data(display_name)",
+                        "shape": "ellipse",
+                        'background-color': 'blue'
+                    }
+                },
+                {
+                    selector: 'node[label="Gene"]',
+                    style: {
+                        "content": "data(display_name)",
+                        "shape": "diamond",
+                        'background-color': '#2b580c'
+                    }
+                },
+                {
+                    selector: 'node[label="Disease"]',
+                    style: {
+                        "content": "data(display_name)",
+                        'shape': 'triangle',
+                        'background-color': 'orange'
+                    }
+                },
+                {
+                    selector: 'node[label="Phenotype"]',
+                    style: {
+                        "content": "data(display_name)",
+                        'shape': 'tag',
+                        'background-color': '#639a67'
+                    }
+                },
+                {
+                    selector: 'node[label="Drug Candidate"]',
+                    style: {
+                        "content": "data(display_name)",
+                        'shape': 'square',
+                        'background-color': 'purple',
+                    }
+                },
+                {
+                    selector: 'node[label="ChemblMolecule"]',
+                    style: {
+                        "content": "data(display_name)",
+                        'shape': 'square',
+                        'background-color': 'purple',
+                    }
+                },
+                {
+                    selector: 'node[label="Pathway"]',
+                    style: {
+                        "content": "data(display_name)",
+                        'shape': 'rhomboid',
+                        'background-color': 'yellow',
+                    }
+                },
+                {
+                    selector: 'node[label="Interpro"]',
+                    style: {
+                        "content": "data(display_name)",
+                        'shape': 'octagon',
+                        'background-color': '#000839',
+                    }
+                },
+                {
+                    selector: 'node[label="GeneOntology"]',
+                    style: {
+                        "content": "data(display_name)",
+                        'shape': 'vee',
+                        'background-color': '#d9bf77',
+                    }
+                },
+                {
+                    selector: 'edge',
+                    style: {
+                        'content': function (ele)
+                        {
+                            return cy.edges('[source = "' + ele.data("source") + '"][target = "' + ele.data("target") + '"]').length;
+                        },
+                        'width': 3,
+                        'opacity': 0.5,
+                        'line-color': '#4287f5'
+                    }
+                },
+                {
+                    selector: ':loop',
+                    style: {
+                        "curve-style": 'bezier',
+                        "control-point-step-size": 22,
+                        'width': 3,
+                        'opacity': 0.5,
+                        'line-color': '#03fcf8'
+                    }
+                }
+            ]
+        });
+    }
 
     function clearFilteredElements() {
         filteredElements = {"elements": []};
@@ -368,6 +1031,10 @@
     function addFilteredElement(ele) {
         filteredElements["elements"].push({"data": ele});
         filteredNodeSet.add(ele.id);
+    }
+
+    function addFilteredEdge(ele){
+        filteredElements["elements"].push({"data": ele});
     }
 
     let checkForGraph = function() {
@@ -454,13 +1121,7 @@
                     var src = parsed_nodes_data[srcId];
                     var trg = parsed_nodes_data[trgId];
 
-                    if(src.label == "Protein" && trg.label == "Drug Candidate") {
-                        if (!(srcId in activity_info)) {
-                            // Key does not exist
-                            activity_info[srcId] = [];
-                        }
-                        activity_info[srcId].push(trg);
-                    } else if (trg.label == "Protein" && src.label == "Drug Candidate") {
+                    if (trg.label == "Protein" && src.label == "Drug Candidate") {
                         if (!(trgId in activity_info)) {
                             // Key does not exist
                             activity_info[trgId] = [];
@@ -470,15 +1131,13 @@
                 }
             }
         }
-        console.log("Created node and edge sets");
         sortNodes();
-        console.log("Sorted nodes");
     }
 
     function sortNodes() {
         for (var key in parsed_nodes) {
             // No need to sort Drug Candidates and Proteins.
-            if (key != "Drug Candidate" && key != "Protein") {
+            if (key != "Drug Candidate" && key != "Protein" && key != "Gene") {
                 parsed_nodes[key].sort(compareNodes);
             }
         }
@@ -492,10 +1151,16 @@
     }
 
     function filterGraphNew() {
+        window.MAX_COUNTS = {"Drug": nodeTypeMaxCount.value,
+            "Pathway": nodeTypeMaxCount.value,
+            "Gene": nodeTypeMaxCount.value,
+            "Disease": nodeTypeMaxCount.value,
+            "Phenotype": nodeTypeMaxCount.value,
+            "Intepro": nodeTypeMaxCount.value,
+            "GeneOntology": nodeTypeMaxCount.value};
         var nodesToShow = new Set();
         var counts = {"Drug": 0,
             "Pathway": 0,
-            "Gene": 0,
             "Disease": 0,
             "Phenotype": 0,
             "Interpro": 0,
@@ -507,26 +1172,30 @@
         for(var key in parsed_nodes) {
             // Filter every node except Drug Candidates.
             // Protein filtering was done in back-end.
-            if (key != "Drug Candidate" && key != "Protein") {
+            if (key != "Drug Candidate" && key != "Protein" && key != "Gene") {
                 var currentList = parsed_nodes[key];
                 var currentIndex = 0;
                 while (counts[key] < MAX_COUNTS[key] && currentIndex < currentList.length) {
                     var ele = currentList[currentIndex];
-                    if (ele.p_value < pValueThreshold) {
+                    if (ele.p_value < pValueThreshold && ele.score > 0) {
                         addFilteredElement(ele);
                         counts[key]++;
                     }
                     currentIndex++;
                 }
             }
-            else if (key == "Protein") {
+            else if (key == "Protein" || key == "Gene") {
                 var currentList = parsed_nodes[key];
                 for (var i=0; i<currentList.length; i++) {
-                    addFilteredElement(currentList[i]);
+                    // Include nodes without score + nodes with score > 0
+                    if ("score" in currentList[i] && currentList[i]["score"] > 0)  {
+                        addFilteredElement(currentList[i]);
+                    } else {
+                        addFilteredElement(currentList[i]);
+                    }
                 }
             }
         }
-        console.log("Filtered nodes");
         // Filter drug candidates
         for(var key in activity_info) {
             var currentList = activity_info[key];
@@ -534,22 +1203,20 @@
             var currentIndex = 0;
             while (count < noOfCompoundsPerProtein && currentIndex < currentList.length) {
                 var ele = currentList[currentIndex];
-                if (ele.p_value < pValueThreshold) {
+                if (ele.p_value < pValueThreshold && ele.score > 0) {
                     addFilteredElement(ele);
                     count++;
                 }
                 currentIndex++;
             }
         }
-        console.log("Filtered candidates");
         // Filter edges
         for(var edgeId in parsed_edges) {
             var edge = parsed_edges[edgeId];
             if (filteredNodeSet.has(edge.source) && filteredNodeSet.has(edge.target)) {
-                addFilteredElement(edge);
+                addFilteredEdge(edge);
             }
         }
-        console.log("Filtered edges");
         cy.elements().remove();
         cy.add(filteredElements.elements);
         console.log(filteredNodeSet);
@@ -559,7 +1226,7 @@
         console.log(window.current);
         document.getElementById(window.current).style.display = "none";
         window.current = document.getElementById("nodeTypeBox").value;
-        document.getElementById(window.current).style.display = "block";
+        document.getElementById(window.current).style.display = "inline-block";
     }
 
     function revertFiltering() {
@@ -568,6 +1235,11 @@
         RunLayout(cy);
     }
 
+    function filterGraphAction(){
+        //cy.elements().remove();
+        filterGraphNew();
+        RunLayout(cy);
+    }
 
     function GetNode() {
         activateLoader();
@@ -601,6 +1273,239 @@
         });
     }
 
+    function getNodeDetails(nodeID, ele) {
+        /*let address = base_address;
+        address = address + "search/node/" + nodeID;
+        var client = new HttpClient();
+        client.get(address, function (response) {
+            showNodeDetails(response, ele);
+        })*/
+    }
+
+    function getNodeWebsiteDetails(nodeID, ele) {
+        let address = base_address;
+        address = address + "search/node/" + nodeID;
+        var client = new HttpClient();
+        client.get(address, function (response) {
+            goToWebsite(response, ele);
+        })
+    }
+
+    function goToWebsite(data, ele) {
+        console.log(ele.data("label"));
+        console.log(data);
+        data = JSON.parse(data);
+
+        if(ele.data("label")=='Drug')
+        {
+            window.open("https://www.drugbank.ca/"+data["drugbank_drug_id"], '_blank');
+        }
+        else if(ele.data("label")=='Protein')
+        {
+            window.open("https://www.uniprot.org/uniprot/"+data["accession"], '_blank');
+        }
+        else if(ele.data("label")=='Drug Candidate')
+        {
+            window.open("https://www.ebi.ac.uk/chembldb/compound/inspect/"+data["molecule_chembl_id"], '_blank');
+        }
+        else if(ele.data("label")=='Pathway')
+        {
+            window.open("https://reactome.org/content/detail/"+ data["reactome_id"].toLowerCase(), '_blank');
+        }
+        /*
+        else if( ele.data("label")=='Gene' ) {
+            window.open("https://omim.org/entry/"+ data["omim_gene_ids"].toLowerCase(), '_blank');
+        }
+        */
+        else if(ele.data("label")=='Disease') {
+            labels = ele.data("labels");
+            const omim_key = labels.indexOf("OmimDisease");
+            if(omim_key != -1) {
+                window.open("https://omim.org/entry/"+ data["omim_id"], '_blank');
+            }
+            /*
+            const efo_key = labels.indexOf("EfoDisease");
+            if(efo_key != -1) {
+                window.open("https://www.ebi.ac.uk/ols/ontologies/efo/terms?iri=http%3A%2F%2Fpurl.obolibrary.org%2Fobo%2F"+ data["disease_id"].replace(':','_'), '_blank');
+            }*/
+
+        }
+        else if(ele.data("label") == 'Phenotype') {
+            window.open("https://hpo.jax.org/app/browse/disease/"+ data["hpo_phenotype_id"], '_blank');
+        }
+    }
+
+    function GetCrossrefRowData(data, type, key)
+    {
+        let cross_ref_flag = false;
+        let row_data = "";
+        switch (type) {
+            case "Drug":
+                if(key == "xref_pubchem") {
+                    cross_ref_flag = true;
+                    const cross_refs = data[key];
+                    console.log(cross_refs);
+                    for (cross_ref in cross_refs) {
+                        const sid = cross_refs[cross_ref].split(":")[1].slice(1,);
+                        row_data += "<a href='https://pubchem.ncbi.nlm.nih.gov/substances/"+sid+"'target='_blank'>"+sid+"</a>, ";
+                    }
+                } else if(key == "molecule_chembl_id") {
+                    cross_ref_flag = true;
+                    const ref = data[key];
+                    row_data += "<a href='https://www.ebi.ac.uk/chembl/compound_report_card/"+ref+"'target='_blank'>"+ref+"</a> ";
+                } else if(key == "kegg_cid") {
+                    cross_ref_flag = true;
+                    const ref = data[key];
+                    row_data += "<a href='https://www.genome.jp/dbget-bin/www_bget?cpd:"+ref+"'target='_blank'>"+ref+"</a> ";
+                } else if(key == "pubchem_sid") {
+                    cross_ref_flag = true;
+                    const ref = data[key];
+                    row_data += "<a href='https://pubchem.ncbi.nlm.nih.gov/substances/"+ref+"'target='_blank'>"+ref+"</a> ";
+                } else if(key == "pubchem_cid") {
+                    cross_ref_flag = true;
+                    const ref = data[key];
+                    row_data += "<a href='https://pubchem.ncbi.nlm.nih.gov/compounds/"+ref+"'target='_blank'>"+ref+"</a> ";
+                } else if(key == "drugbank_drug_id") {
+                    cross_ref_flag = true;
+                    const ref = data[key];
+                    row_data += "<a href='https://www.drugbank.ca/drugs/"+ref+"'target='_blank'>"+ref+"</a> ";
+                }
+                break;
+            case "Drug Candidate":
+                if(key == "xref_pubchem") {
+                    cross_ref_flag = true;
+                    const cross_refs = data[key];
+                    for (cross_ref in cross_refs) {
+                        const sid = cross_refs[cross_ref].split(":")[1].slice(1,);
+                        row_data += "<a href='https://pubchem.ncbi.nlm.nih.gov/substances/"+sid+"'target='_blank'>"+sid+"</a>, ";
+                    }
+                } else if (key == "molecule_chembl_id") {
+                    cross_ref_flag = true;
+                    const ref = data[key];
+                    row_data += "<a href='https://www.ebi.ac.uk/chembl/compound_report_card/"+ref+"'target='_blank'>"+ref+"</a> ";
+                }
+                break;
+            case "Disease" :
+                if(key == "doid") {
+                    cross_ref_flag = true;
+                    const cross_refs = data[key];
+                    for (cross_ref in cross_refs) {
+                        const sid = cross_refs[cross_ref].split(":")[1];
+                        row_data += "<a href='https://www.ebi.ac.uk/ols/ontologies/doid/terms?iri=http%3A%2F%2Fpurl.obolibrary.org%2Fobo%2FDOID_"+sid+"'target='_blank'>"+sid+"</a>, ";
+                    }
+                } else if (key == "omim_id") {
+                    cross_ref_flag = true;
+                    const cross_refs = data[key];
+                    for (cross_ref in cross_refs) {
+                        cross_ref = cross_refs[cross_ref]
+                        const i = cross_ref.search(":");
+                        console.log(i);
+                        let ref;
+                        if (i==-1)
+                            ref = cross_ref;
+                        else
+                            ref = cross_ref.split(":")[1];
+                        row_data += "<a href='https://omim.org/entry/"+ref+"'target='_blank'>"+ref+"</a> ";
+                    }
+                }
+                break;
+            case "GeneOntology":
+                if(key == "go_id") {
+                    cross_ref_flag = true;
+                    const ref = data[key];
+                    row_data += "<a href='http://amigo.geneontology.org/amigo/term/"+ref+"'target='_blank'>"+ref+"</a> ";
+                } else if(key == "evidences_pubmed_ids") {
+                    cross_ref_flag = true;
+                    const ref = data[key];
+                    row_data += "<a href='https://www.ncbi.nlm.nih.gov/pubmed/?term="+ref+"'target='_blank'>"+ref+"</a> ";
+                }
+                break;
+            case "Gene":
+                if(key == "omim_gene_ids") {
+                    cross_ref_flag = true;
+                    const ref = data[key];
+                    row_data += "<a href='https://omim.org/entry/"+ref+"'target='_blank'>"+ref+"</a> ";
+                } else if(key == "kegg_ids") {
+                    cross_ref_flag = true;
+                    const cross_refs = data[key];
+                    for (i in cross_refs) {
+                        kegg_id = cross_refs[i];
+                        row_data += "<a href='https://www.genome.jp/dbget-bin/www_bget?"+kegg_id+"'target='_blank'>"+kegg_id+"</a>, ";
+                    }
+                } else if (key == "hpo_gene_id") {
+                    cross_ref_flag = true;
+                    const ref = data[key];
+                    row_data += "<a href='https://hpo.jax.org/app/browse/gene/"+ref+"'target='_blank'>"+ref+"</a> ";
+                }
+                break;
+            case "Pathway":
+                if (key == "reactome_id") {
+                    cross_ref_flag = true;
+                    const ref = data[key];
+                    row_data += "<a href='https://reactome.org/content/detail/"+ref+"'target='_blank'>"+ref+"</a> ";
+                }
+                break;
+            case "Phenotype":
+                if (key == "hpo_phenotype_id"){
+                    cross_ref_flag = true;
+                    const ref = data[key];
+                    row_data += "<a href='https://hpo.jax.org/app/browse/term/"+ref+"'target='_blank'>"+ref+"</a> ";
+                }
+            default:
+                break;
+        }
+        if (cross_ref_flag)
+            return [row_data, cross_ref_flag];
+        else
+            return [data[key], cross_ref_flag];
+
+    }
+
+    function showNodeDetails(data, ele) {
+        left_side_handler.ClearLeftSideBar();
+        let type = ele["label"];
+        data = JSON.parse(data);
+        var node_details_data = {};
+        var protein_extra_data = {"active_sites": {"keys":[], "values":[]},
+            "binding_sites": {"keys":[], "values":[]},
+            "domains": {"keys":[], "values":[]},
+            "top_doms": {"keys":[], "values":[]},
+            "mutagens": {"keys":[], "values":[]},
+            "variants": {"keys":[], "values":[]},
+            "chains": {"keys":[], "values":[]},
+            "regions": {"keys":[], "values":[]},
+        };
+        node_details_data["labels"] = ele["labels"];
+
+        for (var key in data) {
+            if (key != "type" && key != "id" && key != "label" && key != "display_name")
+            {
+                //protein needs extra tables
+                if(type == "Protein" &&
+                    (key == "active_sites" || key == "binding_sites" || key == "domains" || key =="top_doms"
+                        || key == "mutagens" || key == "variants" || key == "chains"|| key=="regions"))
+                {
+                    var extraData = data[key];
+                    for (var extraDataElement in extraData)
+                    {
+                        protein_extra_data[key]["keys"] = protein_extra_data[key]["keys"].concat(Object.keys(JSON.parse(extraData[extraDataElement])));
+                        protein_extra_data[key]["values"] = protein_extra_data[key]["values"].concat(Object.values(JSON.parse(extraData[extraDataElement])));
+                    }
+                    continue;
+                }
+                else
+                {
+                    node_details_data[key] = {};
+                    [node_details_data[key]["value"], node_details_data[key]["HTML_flag"]] = GetCrossrefRowData(data, type, key);
+                }
+            }
+        }
+        left_side_handler.CreateTable(Object.keys(node_details_data), Object.values(node_details_data), type);
+        for (var key in protein_extra_data)
+            if(protein_extra_data[key]["keys"].length != 0)
+                left_side_handler.CreateTable(protein_extra_data[key]["keys"], protein_extra_data[key]["values"], key);
+    }
+
     let activateLoader = function() {
         let loader = document.getElementById("loader");
         loader.style.visibility = "visible";
@@ -612,8 +1517,8 @@
     }
 
     let CreateGraph = function (response) {
-        // do something with response
-        /*console.log("RESPONSE");
+        /*// do something with response
+        console.log("RESPONSE");
         console.log(response);
         const response_parsed = JSON.parse(response.slice(13, -1));
         console.log("PARSED RESPONSE");
@@ -621,6 +1526,7 @@
         createNodeEdgeSets(response_parsed);
         if(response_parsed.length == 0){
             document.getElementById("getnode").disabled = false;
+            document.getElementById("searchDepth").disabled = false;
             alert("The query result is empty! Make sure you have searched with correct paramaters");
             return false;
         }
@@ -628,126 +1534,13 @@
         if (flag == true) {
             cy.unmount();
             cy.destroy();
+        }
+        if (advanced_flag == true) {
+            advanced_handler.unmount();
         }*/
 
         try {
-            window.cy = cytoscape({
-                container: undefined,
-                elements: null,
-                style: [
-                    {
-                    selector: 'node',
-                    style: {
-                        "content": "data(label)",
-                        'shape': 'triangle',
-                        'background-color': 'red',
-                        "font-size": "12px",
-                        "text-valign": "center",
-                        "text-halign": "center",
-                        "background-color": "#555",
-                        "text-outline-color": "#555",
-                        "text-outline-width": "2px",
-                        "color": "#fff",
-                        "overlay-padding": "6px",
-                        "z-index": "10"
-                    }
-                    },
-                    {
-                        selector: 'node[label="Drug"]',
-                        style: {
-                            "content": "data(display_name)",
-                            'shape': 'hexagon',
-                            'background-color': 'red'
-                        }
-                    },
-                    {
-                        selector: 'node[label="Protein"]',
-                        style: {
-                            "content": "data(display_name)",
-                            "shape": "ellipse",
-                            'background-color': 'blue'
-                        }
-                    },
-                    {
-                        selector: 'node[label="Gene"]',
-                        style: {
-                            "content": "data(display_name)",
-                            "shape": "diamond",
-                            'background-color': '#2b580c'
-                        }
-                    },
-                    {
-                        selector: 'node[label="Disease"]',
-                        style: {
-                            "content": "data(display_name)",
-                            'shape': 'triangle',
-                            'background-color': 'orange'
-                        }
-                    },
-                    {
-                        selector: 'node[label="Phenotype"]',
-                        style: {
-                            "content": "data(display_name)",
-                            'shape': 'tag',
-                            'background-color': '#639a67'
-                        }
-                    },
-                    {
-                        selector: 'node[label="Drug Candidate"]',
-                        style: {
-                            "content": "data(display_name)",
-                            'shape': 'square',
-                            'background-color': 'purple',
-                        }
-                    },
-                    {
-                        selector: 'node[label="Pathway"]',
-                        style: {
-                            "content": "data(display_name)",
-                            'shape': 'rhomboid',
-                            'background-color': 'yellow',
-                        }
-                    },
-                    {
-                        selector: 'node[label="Interpro"]',
-                        style: {
-                            "content": "data(display_name)",
-                            'shape': 'octagon',
-                            'background-color': '#000839',
-                        }
-                    },
-                    {
-                        selector: 'node[label="GeneOntology"]',
-                        style: {
-                            "content": "data(display_name)",
-                            'shape': 'vee',
-                            'background-color': '#d9bf77',
-                        }
-                    },
-                    {
-                        selector: 'edge',
-                        style: {
-                            'content': function (ele)
-                            {
-                                return cy.edges('[source = "' + ele.data("source") + '"][target = "' + ele.data("target") + '"]').length;
-                            },
-                            'width': 3,
-                            'opacity': 0.5,
-                            'line-color': '#4287f5'
-                        }
-                    },
-                    {
-                        selector: ':loop',
-                        style: {
-                            "curve-style": 'bezier',
-                            "control-point-step-size": 22,
-                            'width': 3,
-                            'opacity': 0.5,
-                            'line-color': '#03fcf8'
-                        }
-                    }
-                ]
-            });
+            createCytoscapeElement();
         } catch (e) {
             console.log("ERROR: " + e);
             console.log(response);
@@ -760,10 +1553,10 @@
             filterGraphNew();
             end = new Date().getTime();
             console.log("Filter time:" + (end-start)/1000);
-            document.getElementById("filter").disabled = false;
+            //document.getElementById("filter").disabled = false;
             //cy.add(window.els);
         } else {
-            cy.add([{"data": {"type": "node", "id": 371666, "chains": [{'description': 'B2 bradykinin receptor', 'begin_floor:short': '1', 'begin_ceil:short': '2', 'begin_unparsed:short': '1', 'begin_uncertain:bool': 'False', 'end_floor:short': '396', 'end_ceil:short': '397', 'end_unparsed:short': '396', 'end_uncertain:bool': 'False'}, {"test" : "a"}], "genes": ["['Bdkrb2']"], "chromosome": "Unplaced", "mass": 44930, "name": "B2 bradykinin receptor", "length": 396, "accession": "P25023", "display_name": "P25023", "n_total_enrichment_connections": 0, "tax_id": "10116", "label": "Protein", "labels": ["Protein"]}}]);
+            cy.add([{"data": {"type": "node", "id": 2305725, "prodrug": 0.0, "chirality": 0.0, "heavy_atoms_count": 27.0, "drugbank_drug_id": "DB00341", "inchi_keys": ["ZKLPARSLTMPFCP-UHFFFAOYSA-N"], "standard_inchis": ["InChI=1S/C21H25ClN2O3/c22-19-8-6-18(7-9-19)21(17-4-2-1-3-5-17)24-12-10-23(11-13-24)14-15-27-16-20(25)26/h1-9,21H,10-16H2,(H,25,26)"], "alogps": [3.1500000953674316], "canonical_smiles": ["OC(=O)COCCN1CCN(CC1)C(c2ccccc2)c3ccc(Cl)cc3", "OC(=O)COCCN1CCN(CC1)C(C1=CC=CC=C1)C1=CC=C(Cl)C=C1"], "molecular_species": "ACID", "pubchem_sid": "46508368", "molecular_types": ["small molecule"], "full_mwts": [388.8999938964844], "polar_surface_area": 53.0099983215332, "kegg_cid": "C07778", "name": "Cetirizine", "xref_pubchem": ["SID: 174007233", "SID: 90341832"], "pubchem_cid": "2678", "molecule_chembl_id": "CHEMBL1000", "label": "Drug", "display_name": "Cetirizine"}}, {"data": {"type": "node", "id": 53998, "full_name": "B2 bradykinin receptor", "genes": ["Bdkrb2"], "chromosome": "Unplaced", "mass": 44930, "length": 396, "accession": "P25023", "tax_id": "10116", "label": "Protein", "display_name": "Bdkrb2"}}, {"data": {"type": "node", "id": 306396, "full_name": "Histamine H1 receptor", "genes": ["Hrh1", "Bphs"], "chromosome": "6", "mass": 55682, "length": 488, "accession": "P70174", "tax_id": "10090", "label": "Protein", "display_name": "Hrh1"}}, {"data": {"type": "node", "id": 1202279, "prodrug": 0, "full_mwt": 461.82000732421875, "standard_inchi": "InChI=1S/C21H25ClN2O3.2ClH/c22-19-8-6-18(7-9-19)21(17-4-2-1-3-5-17)24-12-10-23(11-13-24)14-15-27-16-20(25)26;;/h1-9,21H,10-16H2,(H,25,26);2*1H", "n_active_protein_connections": 0, "alogp": 3.1500000953674316, "chirality": 0, "molecular_type": "Small molecule", "heavy_atoms_count": 27, "canonical_smiles": "Cl.Cl.OC(=O)COCCN1CCN(CC1)C(c2ccccc2)c3ccc(Cl)cc3", "molecular_species": "ACID", "inchi_key": "PGLIUCLTXOYQMV-UHFFFAOYSA-N", "xref_pubchem": ["SID: 144204255", "SID: 144212578", "SID: 170465442", "SID: 26749066"], "n_total_protein_connections": 0, "molecule_chembl_id": "CHEMBL1607273", "label": "Drug Candidate", "display_name": "CHEMBL1607273"}}, {"data": {"type": "node", "id": 498089, "prodrug": -1, "full_mwt": 425.3599853515625, "standard_inchi": "InChI=1S/C21H25ClN2O3.ClH/c22-19-8-6-18(7-9-19)21(17-4-2-1-3-5-17)24-12-10-23(11-13-24)14-15-27-16-20(25)26;/h1-9,21H,10-16H2,(H,25,26);1H", "n_active_protein_connections": 0, "alogp": 3.1500000953674316, "chirality": -1, "molecular_type": "Small molecule", "heavy_atoms_count": 27, "canonical_smiles": "Cl.OC(=O)COCCN1CCN(CC1)C(c2ccccc2)c3ccc(Cl)cc3", "molecular_species": "ACID", "inchi_key": "CUSPGNDCPOVPBA-UHFFFAOYSA-N", "xref_pubchem": ["SID: 14743457"], "n_total_protein_connections": 0, "molecule_chembl_id": "CHEMBL1201113", "label": "Drug Candidate", "display_name": "CHEMBL1201113"}}, {"data": {"type": "node", "id": 6621, "full_name": "Angiopoietin-1 receptor", "genes": ["TEK", "TIE2", "VMCM", "VMCM1"], "chromosome": "9", "mass": 125830, "length": 1124, "accession": "Q02763", "ec_numbers": ["2.7.10.1"], "tax_id": "9606", "label": "Protein", "display_name": "TEK"}}, {"data": {"type": "node", "id": 284994, "full_name": "Solute carrier family 22 member 2", "genes": ["SLC22A2", "OCT2"], "chromosome": "6", "mass": 62581, "length": 555, "accession": "O15244", "tax_id": "9606", "label": "Protein", "display_name": "SLC22A2"}}, {"data": {"type": "node", "id": 120216, "full_name": "Multidrug and toxin extrusion protein 1", "genes": ["SLC47A1", "MATE1"], "chromosome": "17", "mass": 61922, "length": 570, "accession": "Q96FL8", "tax_id": "9606", "label": "Protein", "display_name": "SLC47A1"}}, {"data": {"type": "node", "id": 202596, "full_name": "Serum albumin", "genes": ["ALB"], "chromosome": "4", "mass": 69367, "length": 609, "accession": "P02768", "tax_id": "9606", "label": "Protein", "display_name": "ALB"}}, {"data": {"type": "node", "id": 232360, "full_name": "Arachidonate 5-lipoxygenase", "genes": ["ALOX5", "LOG5"], "chromosome": "10", "mass": 77983, "length": 674, "accession": "P09917", "ec_numbers": ["1.13.11.34"], "tax_id": "9606", "label": "Protein", "display_name": "ALOX5"}}, {"data": {"type": "node", "id": 333318, "full_name": "Solute carrier organic anion transporter family member 1B1", "genes": ["SLCO1B1", "LST1", "OATP1B1", "OATP2", "OATPC", "SLC21A6"], "chromosome": "12", "mass": 76449, "length": 691, "accession": "Q9Y6L6", "tax_id": "9606", "label": "Protein", "display_name": "SLCO1B1"}}, {"data": {"type": "node", "id": 122738, "full_name": "Solute carrier organic anion transporter family member 1B3", "genes": ["SLCO1B3", "LST2", "OATP1B3", "OATP8", "SLC21A8"], "chromosome": "12", "mass": 77403, "length": 702, "accession": "Q9NPD5", "tax_id": "9606", "label": "Protein", "display_name": "SLCO1B3"}}, {"data": {"type": "node", "id": 202591, "full_name": "Alpha-1-acid glycoprotein 1", "genes": ["ORM1", "AGP1"], "chromosome": "9", "mass": 23512, "length": 201, "accession": "P02763", "tax_id": "9606", "label": "Protein", "display_name": "ORM1"}}, {"data": {"type": "node", "id": 284997, "full_name": "Solute carrier family 22 member 1", "genes": ["SLC22A1", "OCT1"], "chromosome": "6", "mass": 61154, "length": 554, "accession": "O15245", "tax_id": "9606", "label": "Protein", "display_name": "SLC22A1"}}, {"data": {"type": "node", "id": 115221, "full_name": "Solute carrier organic anion transporter family member 2B1", "genes": ["SLCO2B1", "KIAA0880", "OATP2B1", "OATPB", "SLC21A9"], "chromosome": "11", "mass": 76711, "length": 709, "accession": "O94956", "tax_id": "9606", "label": "Protein", "display_name": "SLCO2B1"}}, {"data": {"type": "node", "id": 128157, "full_name": "Histamine H1 receptor", "genes": ["HRH1"], "chromosome": "3", "mass": 55784, "length": 487, "accession": "P35367", "tax_id": "9606", "label": "Protein", "display_name": "HRH1"}}, {"data": {"type": "node", "id": 194573, "full_name": "Potassium voltage-gated channel subfamily H member 2", "genes": ["KCNH2", "ERG", "ERG1", "HERG"], "chromosome": "7", "mass": 126655, "length": 1159, "accession": "Q12809", "tax_id": "9606", "label": "Protein", "display_name": "KCNH2"}}, {"data": {"type": "node", "id": 229267, "full_name": "Cytochrome P450 3A4", "genes": ["CYP3A4", "CYP3A3"], "chromosome": "7", "mass": 57343, "length": 503, "accession": "P08684", "ec_numbers": ["1.14.14.-", "1.14.14.56", "1.14.14.73", "1.14.14.-", "1.14.14.55", "1.14.14.-"], "tax_id": "9606", "label": "Protein", "display_name": "CYP3A4"}}, {"data": {"type": "edge", "id": 5617350, "source": 2305725, "target": 53998, "relation_type": "ACTIVITY", "assay_type": "B", "standard_units": "%", "assay_chembl_id": "CHEMBL652378", "confidence_score": 8, "target_chembl_id": "CHEMBL2501", "standard_relation": "=", "standard_flag": false, "standard_value": 27.0}}, {"data": {"type": "edge", "id": 5561153, "source": 2305725, "target": 306396, "relation_type": "ACTIVITY", "assay_type": "F", "assay_organism": "Mus musculus", "standard_units": "mg.kg-1", "assay_chembl_id": "CHEMBL914460", "confidence_score": 9, "target_chembl_id": "CHEMBL4322", "standard_relation": "=", "standard_flag": false, "standard_value": 5.0}}, {"data": {"type": "edge", "id": 5516340, "source": 1202279, "target": 2305725, "relation_type": "MOLECULE_PARENT"}}, {"data": {"type": "edge", "id": 5516339, "source": 498089, "target": 2305725, "relation_type": "MOLECULE_PARENT"}}, {"data": {"type": "edge", "id": 5511928, "source": 2305725, "target": 6621, "relation_type": "ACTIVITY", "target_chembl_id": "CHEMBL4128", "assay_type": "B", "standard_flag": false, "assay_organism": "Homo sapiens", "assay_chembl_id": "CHEMBL2016087", "confidence_score": 9}}, {"data": {"type": "edge", "id": 5511927, "source": 2305725, "target": 6621, "relation_type": "ACTIVITY", "assay_type": "B", "pchembl_value": 4.050000190734863, "assay_organism": "Homo sapiens", "standard_units": "nM", "assay_chembl_id": "CHEMBL2016084", "confidence_score": 9, "target_chembl_id": "CHEMBL4128", "standard_relation": "=", "standard_flag": false, "standard_value": 90000.0}}, {"data": {"type": "edge", "id": 5490949, "source": 2305725, "target": 284994, "relation_type": "ACTIVITY", "target_chembl_id": "CHEMBL1743122", "assay_type": "A", "standard_flag": false, "assay_organism": "Homo sapiens", "assay_chembl_id": "CHEMBL1743168", "confidence_score": 9}}, {"data": {"type": "edge", "id": 5477181, "source": 2305725, "target": 120216, "relation_type": "ACTIVITY", "assay_type": "B", "assay_organism": "Homo sapiens", "standard_units": "nM", "assay_chembl_id": "CHEMBL2320306", "confidence_score": 9, "target_chembl_id": "CHEMBL1743126", "standard_relation": ">", "standard_flag": false, "data_validity_comment": "Outside typical range", "standard_value": 500000.0}}, {"data": {"type": "edge", "id": 5477180, "source": 2305725, "target": 120216, "relation_type": "ACTIVITY", "assay_type": "B", "assay_organism": "Homo sapiens", "standard_units": "%", "assay_chembl_id": "CHEMBL2320305", "confidence_score": 9, "target_chembl_id": "CHEMBL1743126", "standard_relation": "=", "standard_flag": false, "standard_value": 2.0}}, {"data": {"type": "edge", "id": 5471240, "source": 2305725, "target": 202596, "relation_type": "ACTIVITY", "assay_type": "F", "standard_units": "-", "assay_chembl_id": "CHEMBL695063", "confidence_score": 8, "target_chembl_id": "CHEMBL3253", "standard_relation": "=", "standard_flag": false, "standard_value": 2.240000009536743}}, {"data": {"type": "edge", "id": 5471239, "source": 2305725, "target": 202596, "relation_type": "ACTIVITY", "assay_type": "F", "standard_units": "-", "assay_chembl_id": "CHEMBL695062", "confidence_score": 8, "target_chembl_id": "CHEMBL3253", "standard_relation": "=", "standard_flag": false, "standard_value": 1.7799999713897705}}, {"data": {"type": "edge", "id": 5471238, "source": 2305725, "target": 202596, "relation_type": "ACTIVITY", "assay_type": "F", "standard_units": "M/M", "assay_chembl_id": "CHEMBL695061", "confidence_score": 8, "target_chembl_id": "CHEMBL3253", "standard_relation": "=", "standard_flag": false, "standard_value": 5.420000076293945}}, {"data": {"type": "edge", "id": 5471237, "source": 2305725, "target": 202596, "relation_type": "ACTIVITY", "assay_type": "F", "standard_units": "M/M", "assay_chembl_id": "CHEMBL695060", "confidence_score": 8, "target_chembl_id": "CHEMBL3253", "standard_relation": "=", "standard_flag": false, "standard_value": 9.779999732971191}}, {"data": {"type": "edge", "id": 5430293, "source": 2305725, "target": 232360, "relation_type": "ACTIVITY", "target_chembl_id": "CHEMBL215", "assay_type": "B", "standard_flag": false, "assay_organism": "Homo sapiens", "assay_chembl_id": "CHEMBL832729", "confidence_score": 9}}, {"data": {"type": "edge", "id": 5420938, "source": 2305725, "target": 333318, "relation_type": "ACTIVITY", "assay_type": "A", "assay_organism": "Homo sapiens", "standard_units": "%", "assay_chembl_id": "CHEMBL2169429", "confidence_score": 9, "target_chembl_id": "CHEMBL1697668", "standard_relation": "=", "standard_flag": false, "standard_value": 35.70000076293945}}, {"data": {"type": "edge", "id": 5412850, "source": 2305725, "target": 122738, "relation_type": "ACTIVITY", "assay_type": "A", "assay_organism": "Homo sapiens", "standard_units": "%", "assay_chembl_id": "CHEMBL2169430", "confidence_score": 9, "target_chembl_id": "CHEMBL1743121", "standard_relation": "=", "standard_flag": false, "standard_value": 40.29999923706055}}, {"data": {"type": "edge", "id": 5384496, "source": 2305725, "target": 202591, "relation_type": "ACTIVITY", "assay_type": "F", "standard_units": "-", "assay_chembl_id": "CHEMBL623840", "confidence_score": 8, "target_chembl_id": "CHEMBL4285", "standard_relation": "=", "standard_flag": false, "standard_value": 1.7400000095367432}}, {"data": {"type": "edge", "id": 5384495, "source": 2305725, "target": 202591, "relation_type": "ACTIVITY", "assay_type": "F", "standard_units": "M/M", "assay_chembl_id": "CHEMBL623839", "confidence_score": 8, "target_chembl_id": "CHEMBL4285", "standard_relation": "=", "standard_flag": false, "standard_value": 5.119999885559082}}, {"data": {"type": "edge", "id": 5383147, "source": 2305725, "target": 284997, "relation_type": "ACTIVITY", "assay_type": "B", "assay_organism": "Homo sapiens", "standard_units": "%", "assay_chembl_id": "CHEMBL993349", "confidence_score": 9, "target_chembl_id": "CHEMBL5685", "standard_relation": "=", "standard_flag": false, "standard_value": -4.800000190734863}}, {"data": {"type": "edge", "id": 5381778, "source": 2305725, "target": 115221, "relation_type": "ACTIVITY", "assay_type": "A", "assay_organism": "Homo sapiens", "standard_units": "%", "assay_chembl_id": "CHEMBL2169431", "confidence_score": 9, "target_chembl_id": "CHEMBL1743124", "standard_relation": "=", "standard_flag": false, "standard_value": 29.899999618530273}}, {"data": {"type": "edge", "id": 5307448, "source": 2305725, "target": 128157, "relation_type": "ACTIVITY", "assay_type": "B", "pchembl_value": 7.300000190734863, "assay_organism": "Homo sapiens", "standard_units": "nM", "assay_chembl_id": "CHEMBL1224920", "confidence_score": 9, "target_chembl_id": "CHEMBL231", "standard_relation": "=", "standard_flag": false, "standard_value": 50.119998931884766}}, {"data": {"type": "edge", "id": 5307447, "source": 2305725, "target": 128157, "relation_type": "ACTIVITY", "assay_type": "B", "pchembl_value": 7.849999904632568, "assay_organism": "Homo sapiens", "standard_units": "nM", "assay_chembl_id": "CHEMBL830379", "confidence_score": 9, "target_chembl_id": "CHEMBL231", "standard_relation": "=", "standard_flag": false, "standard_value": 14.0}}, {"data": {"type": "edge", "id": 5307446, "source": 2305725, "target": 128157, "relation_type": "ACTIVITY", "assay_type": "B", "pchembl_value": 8.229999542236328, "assay_organism": "Homo sapiens", "standard_units": "nM", "assay_chembl_id": "CHEMBL830377", "confidence_score": 9, "target_chembl_id": "CHEMBL231", "standard_relation": "=", "standard_flag": false, "standard_value": 5.889999866485596}}, {"data": {"type": "edge", "id": 5307445, "source": 2305725, "target": 128157, "relation_type": "ACTIVITY", "assay_type": "B", "pchembl_value": 7.849999904632568, "assay_organism": "Homo sapiens", "standard_units": "nM", "assay_chembl_id": "CHEMBL881222", "confidence_score": 9, "target_chembl_id": "CHEMBL231", "standard_relation": "=", "standard_flag": false, "standard_value": 14.0}}, {"data": {"type": "edge", "id": 5307444, "source": 2305725, "target": 128157, "relation_type": "ACTIVITY", "assay_type": "B", "pchembl_value": 7.849999904632568, "standard_units": "nM", "assay_chembl_id": "CHEMBL880732", "confidence_score": 8, "target_chembl_id": "CHEMBL231", "standard_relation": "=", "standard_flag": false, "standard_value": 14.0}}, {"data": {"type": "edge", "id": 13893, "source": 2305725, "target": 128157, "relation_type": "DRUG_TARGET", "action": "['antagonist']", "target_drugbank_id": "BE0000442", "names": "Histamine H1 receptor"}}, {"data": {"type": "edge", "id": 5233460, "source": 2305725, "target": 194573, "relation_type": "ACTIVITY", "assay_type": "B", "pchembl_value": 4.519999980926514, "standard_units": "nM", "assay_chembl_id": "CHEMBL829152", "confidence_score": 8, "target_chembl_id": "CHEMBL240", "standard_relation": "=", "standard_flag": false, "standard_value": 30199.51953125}}, {"data": {"type": "edge", "id": 5233459, "source": 2305725, "target": 194573, "relation_type": "ACTIVITY", "assay_type": "B", "pchembl_value": 4.5, "assay_organism": "Homo sapiens", "standard_units": "nM", "assay_chembl_id": "CHEMBL1676103", "confidence_score": 9, "target_chembl_id": "CHEMBL240", "standard_relation": "=", "standard_flag": false, "standard_value": 31622.779296875}}, {"data": {"type": "edge", "id": 5233458, "source": 2305725, "target": 194573, "relation_type": "ACTIVITY", "assay_type": "B", "assay_organism": "Homo sapiens", "standard_units": "nM", "assay_chembl_id": "CHEMBL907269", "confidence_score": 9, "target_chembl_id": "CHEMBL240", "standard_relation": ">", "standard_flag": false, "standard_value": 30000.0}}, {"data": {"type": "edge", "id": 5233457, "source": 2305725, "target": 194573, "relation_type": "ACTIVITY", "assay_type": "B", "pchembl_value": 4.519999980926514, "assay_organism": "Homo sapiens", "standard_units": "nM", "assay_chembl_id": "CHEMBL766814", "confidence_score": 9, "target_chembl_id": "CHEMBL240", "standard_relation": "=", "standard_flag": false, "standard_value": 30199.51953125}}, {"data": {"type": "edge", "id": 5233456, "source": 2305725, "target": 194573, "relation_type": "ACTIVITY", "assay_type": "B", "pchembl_value": 4.519999980926514, "assay_organism": "Homo sapiens", "standard_units": "nM", "assay_chembl_id": "CHEMBL954102", "confidence_score": 9, "target_chembl_id": "CHEMBL240", "standard_relation": "=", "standard_flag": false, "standard_value": 30199.51953125}}, {"data": {"type": "edge", "id": 5233455, "source": 2305725, "target": 194573, "relation_type": "ACTIVITY", "assay_type": "B", "standard_units": "nM", "assay_chembl_id": "CHEMBL827807", "confidence_score": 8, "target_chembl_id": "CHEMBL240", "standard_relation": "=", "standard_flag": false, "data_validity_comment": "Outside typical range", "standard_value": 108000.0}}, {"data": {"type": "edge", "id": 5196827, "source": 2305725, "target": 229267, "relation_type": "ACTIVITY", "assay_type": "A", "assay_organism": "Homo sapiens", "standard_units": "%", "assay_chembl_id": "CHEMBL914466", "confidence_score": 9, "target_chembl_id": "CHEMBL340", "standard_relation": "=", "standard_flag": false, "standard_value": 13.0}}]);
         }
         document.getElementById("searchDepth").disabled = false;
         //document.getElementById("revert").disabled = false;
@@ -772,7 +1565,7 @@
         cy.mount(document.getElementById('cy'));
 
         //set and highlight searched node
-        cy.nodes().slice(0,1).style({'shape' : 'star',  "text-outline-color": 'red'});
+        //cy.nodes().slice(0,1).style({'shape' : 'star',  "text-outline-color": 'red'});
         //save style for later recovery
         var styleJson = cy.style().json();
 
@@ -803,23 +1596,7 @@
                     content: 'Go to website',
                     select: function(ele){
                         //const node = ele.target;
-                        console.log(ele.data("label"));
-                        if(ele.data("label")=='Drug')
-                        {
-                            window.open("https://www.drugbank.ca/"+ele.data("drugbank_drug_id"), '_blank');
-                        }
-                        else if(ele.data("label")=='Protein')
-                        {
-                            window.open("https://www.uniprot.org/uniprot/"+ele.data("accession"), '_blank');
-                        }
-                        else if(ele.data("label")=='Drug Candidate')
-                        {
-                            window.open("https://www.ebi.ac.uk/chembldb/compound/inspect/"+ele.data("molecule_chembl_id"), '_blank');
-                        }
-                        else if(ele.data("label")=='Pathway')
-                        {
-                            window.open("https://reactome.org/content/detail/"+ ele.data("reactome_id").toLowerCase(), '_blank');
-                        }
+                        getNodeWebsiteDetails(ele.data("id"), ele);
                     }
                 }
             ]
@@ -843,108 +1620,16 @@
             //highlight the node
             var targetNode = evt.target;
             cy.style(styleJson);
+
             cy.style().selector('edge').style({'content': function (ele)
                 {
-                    return cy.edges('[source = "' + ele.data("source") + '"][target = "' + ele.data("target") + '"]').length;
+                    return "" //cy.edges('[source = "' + ele.data("source") + '"][target = "' + ele.data("target") + '"]').length;
                 }
             });
+
             cy.style().selector(targetNode).style({'background-color' : 'magenta' }).update();
-
-            ClearLeftSideBar();
-            leftSideBarTabCount=1;
             data = this.data();
-            let type = data["label"];
-            CreateLeftSideBarTab(0,type);
-
-
-            var table = document.getElementById("detailsTable0");
-            for (var key in data) {
-                let cross_ref_flag = false;
-                let row_data = "";
-                if (key != "type" && key != "id" && key != "label" && key != "display_name") {
-                    switch (type) {
-                        case "Drug":
-                            if(key == "xref_pubchem") {
-                                cross_ref_flag = true;
-                                const cross_refs = data[key];
-                                for (cross_ref in cross_refs) {
-                                    const sid = cross_refs[0].split(":")[1].slice(1,);
-                                    row_data += "<a href='https://pubchem.ncbi.nlm.nih.gov/substances/"+sid+"'target='_blank'>"+sid+"</a>, ";
-                                }
-                            } else if(key == "molecule_chembl_id") {
-                                cross_ref_flag = true;
-                                const ref = data[key];
-                                row_data += "<a href='https://www.ebi.ac.uk/chembl/compound_report_card/"+ref+"'target='_blank'>"+ref+"</a> ";
-                            } else if(key == "kegg_cid") {
-                                cross_ref_flag = true;
-                                const ref = data[key];
-                                row_data += "<a href='https://www.genome.jp/dbget-bin/www_bget?cpd:"+ref+"'target='_blank'>"+ref+"</a> ";
-                            } else if(key == "pubchem_sid") {
-                                cross_ref_flag = true;
-                                const ref = data[key];
-                                row_data += "<a href='https://pubchem.ncbi.nlm.nih.gov/substances/"+ref+"'target='_blank'>"+ref+"</a> ";
-                            } else if(key == "pubchem_cid") {
-                                cross_ref_flag = true;
-                                const ref = data[key];
-                                row_data += "<a href='https://pubchem.ncbi.nlm.nih.gov/compounds/"+ref+"'target='_blank'>"+ref+"</a> ";
-                            }
-                        case "Drug Candidate":
-                            if(key == "xref_pubchem") {
-                                cross_ref_flag = true;
-                                const cross_refs = data[key];
-                                for (cross_ref in cross_refs) {
-                                    const sid = cross_refs[0].split(":")[1].slice(1,);
-                                    row_data += "<a href='https://pubchem.ncbi.nlm.nih.gov/substances/"+sid+"'target='_blank'>"+sid+"</a>, ";
-                                }
-                            }
-                        case "Disease" :
-                            if(key == "doid") {
-                                cross_ref_flag = true;
-                                const cross_refs = data[key];
-                                for (cross_ref in cross_refs) {
-                                    const sid = cross_refs[0].split(":")[1].slice(1,);
-                                    row_data += "<a href='https://www.ebi.ac.uk/ols/ontologies/doid/terms?iri=http%3A%2F%2Fpurl.obolibrary.org%2Fobo%2FDOID_0"+sid+"'target='_blank'>"+sid+"</a>, ";
-                                }
-                            }
-                    }
-                    //protein needs extra tables
-                    if(type == "Protein" &&
-                        (key == "active_sites" || key == "binding_sites" || key == "domains" || key =="top_doms" || key == "mutagens" || key == "variants" || key == "chains"))
-                    {
-                        // 'active_sites' : [{'extraKey': .., 'extraKey2': ...},{'extraKey' : ...}]
-                        var extraData = data[key];
-                        console.log(extraData);
-                        for (var extraDataElement in extraData)
-                        {
-                            console.log("extra data elemenet:");
-                            console.log(extraDataElement);
-                            console.log("extradata[extradataelement]");
-                            console.log(extraData[extraDataElement]);
-                            console.log(typeof(extraData[extraDataElement]));
-                            //console.log(JSON.parse(extraData[extraDataElement]));
-                            CreateLeftSideBarTab(leftSideBarTabCount,key);
-                            for(var extraKey in extraData[extraDataElement])
-                            {
-                                var extraTable = document.getElementById("detailsTable" + leftSideBarTabCount);
-                                var extraRow = extraTable.insertRow(0);
-                                extraRow.innerHTML = "<th>" + extraKey + "</th>";
-                                var extraCell1 = extraRow.insertCell(-1);// 0 will put columns in reverse order for some reason
-                               // console.log(extraData);
-                                //console.log( JSON.parse(extraData[extraDataElement])["description"]);
-                                console.log("----");
-                                extraCell1.innerText = extraData[extraDataElement][extraKey];
-                            }
-                            leftSideBarTabCount++;
-                        }
-                    }
-                    var row = table.insertRow(0);
-                    row.innerHTML = "<th>" + key + "</th>";
-                    var cell1 = row.insertCell(-1); // 0 will put columns in reverse order for some reason
-                    if(cross_ref_flag) cell1.innerHTML = row_data;
-                    else cell1.innerText = data[key];
-                }
-            }
-            leftSideBarTabs.tabs( "refresh" );
+            getNodeDetails(data["id"], data);
         });
         cy.on('click', 'edge', function (evt) {
             //highlight the edge
@@ -952,7 +1637,7 @@
             cy.style(styleJson);
             cy.style().selector('edge').style({'content': function (ele)
                 {
-                    return cy.edges('[source = "' + ele.data("source") + '"][target = "' + ele.data("target") + '"]').length;
+                    return "" //cy.edges('[source = "' + ele.data("source") + '"][target = "' + ele.data("target") + '"]').length;
                 }
             });
             cy.style().selector(targetEdge).style({'line-color' : 'magenta' }).update();
@@ -961,31 +1646,25 @@
             var source = targetEdge.data().source;
             var target = targetEdge.data().target;
             var edgesBetween = cy.edges('[source = "' + source + '"][target = "' + target + '"]');
-            ClearLeftSideBar();
-            leftSideBarTabCount=edgesBetween.length;
+            left_side_handler.ClearLeftSideBar();
+            var n_edge_tabs=edgesBetween.length;
 
-            for(let edgeIndex = 0; edgeIndex < leftSideBarTabCount ; edgeIndex++)
+            for(let edgeIndex = 0; edgeIndex < n_edge_tabs ; edgeIndex++)
             {
-                CreateLeftSideBarTab(edgeIndex,"");
-
                 data = edgesBetween[edgeIndex].data();
-                var table = document.getElementById("detailsTable"+edgeIndex);
-                for (var key in data) {
-                    if (key != "type" && key != "id") {
-                        var row = table.insertRow(0);
-                        row.innerHTML = "<th>" + key + "</th>";
-                        var cell1 = row.insertCell(-1); // 0 will put columns in reverse order for some reason
-                        cell1.innerText = data[key];
-                    }
-                }
+                left_side_handler.CreateTable(Object.keys(data), Object.values(data), "");
             }
-
             leftSideBarTabs.tabs( "refresh" );
         });
         console.log(JSON.parse(response.slice(13, -1)));
+
+        start = new Date().getTime();
         RunLayout(cy);
+        end = new Date().getTime();
+        console.log("Layout time:" + (end-start)/1000);
     }
     CreateGraph("");
+
 
     function ExecuteQuery() {
         activateLoader();
@@ -998,46 +1677,6 @@
             hideLoader();
             alert(response.split(':')[1]);
         });
-    }
-
-    function ClearLeftSideBar()
-    {
-        //delete previously created tabs
-        for(let tabIndex = 0 ; tabIndex < leftSideBarTabCount; tabIndex++)
-        {
-            let panelId = leftSideBarTabs.find( ".ui-tabs-tab" ).remove().attr( "aria-controls" );
-            $( "#" + panelId ).remove();
-            leftSideBarTabs.tabs( "refresh" );
-        }
-    }
-
-    function CreateLeftSideBarTab(tabIndex, nodeType)
-    {
-        //create a new tab div  containing new table
-        let detailsTableDiv = document.createElement('table');
-        detailsTableDiv.id = "detailsTable" + tabIndex;
-        detailsTableDiv.classList.add("paleBlueRows");
-        detailsTableDiv.style.tableLayout="fixed";
-        detailsTableDiv.style.width = "107%";
-        detailsTableDiv.innerHTML = "<tbody></tbody>";
-
-        let scrollDiv = document.createElement('div');
-        scrollDiv.id="leftTabs" + tabIndex;
-        scrollDiv.classList.add("table-scroll");
-        scrollDiv.append(detailsTableDiv);
-        var li="";
-        if(nodeType!="")
-        {
-            li = $( tabTemplate.replace( /#\{href\}/g, "#" + "leftTabs"+tabIndex ).replace( /#\{label\}/g, nodeType ) );
-        }
-        else
-        {
-            li = $( tabTemplate.replace( /#\{href\}/g, "#" + "leftTabs"+tabIndex ).replace( /#\{label\}/g, tabIndex+1 ) );
-        }
-        leftSideBarTabs.find( ".ui-tabs-nav" ).append( li );
-        leftSideBarTabs.append( "<div id='leftTabs" + tabIndex + "'>" + scrollDiv.innerHTML + "</div>");
-        leftSideBarTabs.tabs( "refresh" );
-        leftSideBarTabs.tabs("option", "active", 0);
     }
 
     /* concentric layout variables */
@@ -1187,6 +1826,7 @@
             anHttpRequest.send(null);
         }
     }
+
 
 
 </script>
