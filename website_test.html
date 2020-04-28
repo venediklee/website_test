@@ -955,10 +955,10 @@
                     {
                         selector: 'edge',
                         style: {
-                            'content': function (ele)
+                            /*'content': function (ele)
                             {
                                 return cy.edges('[source = "' + ele.data("source") + '"][target = "' + ele.data("target") + '"]').length;
-                            },
+                            },*/
                             'width': 3,
                             'opacity': 0.5,
                             'line-color': '#4287f5'
@@ -1076,6 +1076,9 @@
     var leftSideBarTabs;//keep variable to dynamically add new tabs later
     var left_side_handler = new LeftSideHandler();
     $( function() {
+
+
+
         $( "#tabs" ).tabs();
         leftSideBarTabs = $( "#leftSideBar" ).tabs();
         $("#rightSideBar").tabs();
@@ -1103,6 +1106,7 @@
         showHide();
         createCytoscapeElement();
     });
+
 
     function createCytoscapeElement() {
         window.cy = cytoscape({
@@ -1209,10 +1213,10 @@
                 {
                     selector: 'edge',
                     style: {
-                        'content': function (ele)
+                        /*'content': function (ele)
                         {
                             return cy.edges('[source = "' + ele.data("source") + '"][target = "' + ele.data("target") + '"]').length;
-                        },
+                        },*/
                         'width': 3,
                         'opacity': 0.5,
                         'line-color': '#4287f5'
