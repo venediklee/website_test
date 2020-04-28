@@ -9,9 +9,6 @@
 </head>
 
 <style>
-
-
-
     div.tabs
     {
         position: absolute;
@@ -346,7 +343,6 @@
 <body>
 
 <param id="base_address" value="{{ base_addr }}">
-<div class="loader" id="loader"></div>
 <div class="tabs" id="tabs">
     <ul>
         <li><a href="#tabs-1">Search</a></li>
@@ -511,7 +507,9 @@
     </div>
 </div>
 
-<div id="cy"></div>
+<div id="cy">
+    <div class="loader" id="loader"></div>
+</div>
 
 
 <script src="cytoscape.min.js"></script>
