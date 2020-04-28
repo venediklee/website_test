@@ -195,34 +195,91 @@
     <ul>
         <li><a href="#tabs-1">Search</a></li>
         <li><a href="#tabs-2">Query</a></li>
-        <li><a href="#tabs-3">Download</a></li>
+        <li><a href="#tabs-3">Advanced</a></li>
+        <li><a href="#tabs-4">Download</a></li>
     </ul>
     <div id="tabs-1">
-        Enter Node ID: <input type="text" id="nodeKeyText" name="nodeID" size="50">
-        <select id="nodeTypeBox" onChange="showHide()">
+        <div>
+            Enter Node ID: <input type="text" id="nodeKeyText" name="nodeID" size="50">
+            <select id="nodeTypeBox" onChange="showHide()">
+                {% for key, value in schema.items %}
+                <option value={{key}}>{{key}}</option>
+                {% endfor %}
+            </select>
             {% for key, value in schema.items %}
-            <option value={{key}}>{{key}}</option>
+            <select id={{key}} style="display:none; position:static" >
+                {% for i in value %}
+                <option value={{i}}>{{i}}</option>
+                {% endfor %}
+            </select>
             {% endfor %}
+        </div>
+        <div>
+            Search Depth<select id="searchDepth">
+            <option value="1" selected="selected">1</option>
+            <option value="2">2</option>
         </select>
-        {% for key, value in schema.items %}
-        <select id={{key}} hidden>
-            {% for i in value %}
-            <option value={{i}}>{{i}}</option>
-            {% endfor %}
-        </select>
-        {% endfor %}
-        Search Depth<select id="searchDepth">
-        <option value="1" selected="selected">1</option>
-        <option value="2">2</option>
-        <option value="3">3</option>
-    </select>
-        <input type="submit" id="getnode" value="get node" onclick="GetNode()">
+            <input type="submit" id="getnode" value="get node" onclick="GetNode()">
+        </div>
+
     </div>
     <div id="tabs-2">
         Enter Query: <input type="text" id="queryText" name="query" size="50"><br>
         <input type="submit" value="execute query" onclick="ExecuteQuery()">
     </div>
     <div id="tabs-3">
+        <div id="selectSource">
+            Enter Node ID: <input type="text" id="nodeKeyTextAdvanced" name="nodeID" size="50">
+            <select id="nodeTypeBoxAdvanced" onChange="advanced_handler.showHideAdvanced.call(advanced_handler)">
+                {% for key, value in schema.items %}
+                <option value={{key}}>{{key}}</option>
+                {% endfor %}
+            </select>
+            {% for key, value in schema.items %}
+            <select id={{key}}Advanced style="display:none; position:static">
+                {% for i in value %}
+                <option value={{i}}>{{i}}</option>
+                {% endfor %}
+            </select>
+            {% endfor %}
+            <button onclick="advanced_handler.sourceClickAction.call(advanced_handler)">Add Source</button>
+        </div>
+        <div id="advancedCheckboxes" hidden>
+            <div id="proteinCheckboxDiv" hidden>
+                <input type="checkbox" id="proteinCheckbox" value="Protein"> Protein </input>
+            </div>
+            <div id="drugCheckboxDiv" hidden>
+                <input type="checkbox" id="drugCheckbox" value="Drug"> Drug </input>
+            </div>
+            <div id="chemblMoleculeCheckboxDiv" hidden>
+                <input type="checkbox" id="chemblMoleculeCheckbox" value="ChemblMolecule"> ChemblMolecule </input>
+            </div>
+            <div id="pathwayCheckboxDiv" hidden>
+                <input type="checkbox" id="pathwayCheckbox" value="Pathway"> Pathway </input>
+            </div>
+            <div id="diseaseCheckboxDiv" hidden>
+                <input type="checkbox" id="diseaseCheckbox" value="Disease"> Disease </input>
+            </div>
+            <div id="interproCheckboxDiv" hidden>
+                <input type="checkbox" id="interproCheckbox" value="Interpro"> Interpro </input>
+            </div>
+            <div id="geneOntologyCheckboxDiv" hidden>
+                <input type="checkbox" id="geneOntologyCheckbox" value="GeneOntology"> GeneOntology </input>
+            </div>
+            <div id="phenotypeCheckboxDiv" hidden>
+                <input type="checkbox" id="phenotypeCheckbox" value="Phenotype"> Phenotype </input>
+            </div>
+            <div id="geneCheckboxDiv" hidden>
+                <input type="checkbox" id="geneCheckbox" value="Gene"> Gene </input>
+            </div>
+            <button onclick="advanced_handler.addPathAction.call(advanced_handler)">Add Path</button>
+        </div>
+        <div id="resetSendButtons">
+            <button id="sendRequestButtonAdvanced" onclick="advanced_handler.sendAdvancedRequest.call(advanced_handler)" disabled>Send Request</button>
+            <button id="resetButton" onclick="advanced_handler.unmount.call(advanced_handler)">Reset</button>
+        </div>
+    </div>
+    <div id="tabs-4">
         <input type="submit" value="Download Graph" onclick="DownloadGraph()">
         <input type="submit" value="Download Style" onclick="DownloadStyle()">
         <input type="submit" value="Show Image" onclick="DownloadImage()">
@@ -266,36 +323,36 @@
         Max compounds per protein:<input id="topvalue" type="number" value=5>
         <br>
         <br>
-        Max node count per node type: <input id="nodeTypeMaxCount" type="number" value=10>
+        Max node count per node type: <input id="nodeTypeMaxCount" type="number" value=30>
         <br>
         <br>
-        <input type="submit" value="filter nodes" onclick="FilterGraphNew()">
+        <input type="submit" value="filter nodes" onclick="filterGraphAction()">
         <input id="revert" type="submit" value="revert filtering" onclick="revertFiltering()">
     </div>
     <div id="legendTab" class="table-scroll">
-        <img src="disease.png" alt="Disease node" style="vertical-align:middle"> Disease
+        <!-- <img src="{% static '/legend/disease.png' %}" alt="Disease node" style="vertical-align:middle"> Disease
         <br>
-        <img src="phenotype.png" alt="Phenotype node" style="vertical-align:middle"> Phenotype
+        <img src="{% static '/legend/phenotype.png' %}" alt="Phenotype node" style="vertical-align:middle"> Phenotype
         <br>
-        <img src="gene.png" alt="Gene node" style="vertical-align:middle"> Gene
+        <img src="{% static '/legend/gene.png' %}" alt="Gene node" style="vertical-align:middle"> Gene
         <br>
-        <img src="protein.png" alt="Protein node" style="vertical-align:middle"> Protein
+        <img src="{% static '/legend/protein.png' %}" alt="Protein node" style="vertical-align:middle"> Protein
         <br>
-        <img src="interpro.png" alt="Interpro(Domain) node" style="vertical-align:middle"> Interpro(Domain)
+        <img src="{% static '/legend/interpro.png' %}" alt="Interpro(Domain) node" style="vertical-align:middle"> Interpro(Domain)
         <br>
-        <img src="geneOntology.png" alt="Gene Ontology node" style="vertical-align:middle"> Gene Ontology
+        <img src="{% static '/legend/geneOntology.png' %}" alt="Gene Ontology node" style="vertical-align:middle"> Gene Ontology
         <br>
-        <img src="pathway.png" alt="Pathway node" style="vertical-align:middle"> Pathway
+        <img src="{% static '/legend/pathway.png' %}" alt="Pathway node" style="vertical-align:middle"> Pathway
         <br>
-        <img src="drug.png" alt="Drug node" style="vertical-align:middle"> Drug
+        <img src="{% static '/legend/drug.png' %}" alt="Drug node" style="vertical-align:middle"> Drug
         <br>
-        <img src="drugCandidate.png" alt="Drug Candidate(Compound) node" style="vertical-align:middle"> Drug Candidate (Compound)
+        <img src="{% static '/legend/drugCandidate.png' %}" alt="Drug Candidate(Compound) node" style="vertical-align:middle"> Drug Candidate (Compound)
         <br>
-        <img src="mainNode.png" alt="Drug Candidate(Compound) node" style="vertical-align:middle"> Main Node
+        <img src="{% static '/legend/mainNode.png' %}" alt="Drug Candidate(Compound) node" style="vertical-align:middle"> Main Node
         <br>
-        <img src="edgeCount.png" alt="Drug Candidate(Compound) node" style="vertical-align:middle"> Edge Count
+        <img src="{% static '/legend/edgeCount.png' %}" alt="Drug Candidate(Compound) node" style="vertical-align:middle"> Edge Count
         <br>
-        <img src="edgeCountLoop.png" alt="Drug Candidate(Compound) node" style="vertical-align:middle"> Loop Edge Count
+        <img src="{% static '/legend/edgeCountLoop.png' %}" alt="Drug Candidate(Compound) node" style="vertical-align:middle"> Loop Edge Count -->
     </div>
 </div>
 
@@ -1656,7 +1713,7 @@
             }
             leftSideBarTabs.tabs( "refresh" );
         });
-        console.log(JSON.parse(response.slice(13, -1)));
+        /*console.log(JSON.parse(response.slice(13, -1)));*/
 
         start = new Date().getTime();
         RunLayout(cy);
