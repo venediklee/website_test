@@ -1975,7 +1975,8 @@
                 }
             });
 
-            cy.style().selector(targetNode).style({'background-color' : 'magenta' }).update();
+            cy.style().selector(targetNode).style({'background-color' : 'magenta', "border-width": 3});
+            cy.style().selector(targetNode.connectedEdges()).style({'line-color' : 'black', "width": 2}).update();
             data = this.data();
             getNodeDetails(data["id"], data);
         });
@@ -1988,8 +1989,10 @@
                     return "" //cy.edges('[source = "' + ele.data("source") + '"][target = "' + ele.data("target") + '"]').length;
                 }
             });
-            cy.style().selector(targetEdge).style({'line-color' : 'magenta' }).update();
 
+            cy.style().selector(targetEdge).style({'line-color' : 'magenta', "width": 3 });
+            cy.style().selector(targetEdge.source()).style({"border-color": 'magenta' ,"border-width": 3});
+            cy.style().selector(targetEdge.target()).style({"border-color": 'magenta' ,"border-width": 3}).update();
             //find other edges between source and target nodes
             var source = targetEdge.data().source;
             var target = targetEdge.data().target;
