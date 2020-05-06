@@ -1913,7 +1913,7 @@
         cy.mount(document.getElementById('cy'));
 
         //set and highlight searched node
-        //cy.nodes().slice(0,1).style({'shape' : 'star',  "text-outline-color": 'red'});
+        cy.nodes("[start_node]").style({'shape' : 'star',  "text-outline-color": 'red', "border-width": 3});
         //save style for later recovery
         var styleJson = cy.style().json();
 
