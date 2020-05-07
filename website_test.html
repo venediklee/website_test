@@ -76,6 +76,15 @@
         padding: .5em .5em;
     }
 
+    #concentricOrderList
+    {
+        position:relative;
+        list-style-type: none;
+        margin: 0;
+        padding: 0;
+        width: 60%;
+        left: 20%
+    }
 
     .top
     {
@@ -485,12 +494,34 @@
         </select>
         <br>
         <br>
-        <button id="toggleCenteringHighDegreeNodes">Manually center high degree nodes</button>
-        <br>
-        <input id="spinnerCenteringHighDegreeNodes" name="value">
-        <br>
-        <br>
         <input type="submit" value="run layout" onclick="RunLayout(cy)">
+        <br>
+        <br>
+        <fieldset>
+            <legend> Concentric Settings</legend>
+            <button id="toggleCenteringHighDegreeNodes">Manually center high degree nodes</button>
+            <br>
+            <input id="spinnerCenteringHighDegreeNodes" name="value">
+            <br>
+            <br>
+            <input type="checkbox" id="separateDrugCandidateCheckbox" name="separateDrugCandidateCheckbox">
+            <label for="separateDrugCandidateCheckbox">Separate drug candidates</label>
+            <br>
+            <fieldset>
+                <legend>Concentric Ring Order</legend>
+                <ul id="concentricOrderList">
+                    <li class="ui-state-default" id="diseaseSortOrder">Disease</li>
+                    <li class="ui-state-default" id="phenotypeSortOrder">Phenotype</li>
+                    <li class="ui-state-default" id="geneSortOrder">Gene</li>
+                    <li class="ui-state-default" id="proteinSortOrder">Protein</li>
+                    <li class="ui-state-default" id="interproSortOrder">Interpro</li>
+                    <li class="ui-state-default" id="geneOntologySortOrder">Gene Ontology</li>
+                    <li class="ui-state-default" id="pathwaySortOrder">Pathway</li>
+                    <li class="ui-state-default" id="drugSortOrder">Drug</li>
+                </ul>
+            </fieldset>
+            <br>
+        </fieldset>
     </div>
     <div id="filteringTab">
         P-value threshold:<input id="pvalue" type="number" value=0.05>
@@ -616,7 +647,7 @@
             var table = document.getElementById("detailsTable" + this.tableNo);
             for (var i in columns) {
                 if (columns[i] != "type" && columns[i] != "id") {var row = table.insertRow(-1);
-                    row.innerHTML = "<th>" + columns[i] + "</th>";
+                    row.innerHTML = "<th>" + columns[i].replace(/_/g," ") + "</th>";
                     var cell1 = row.insertCell(-1); // 0 will put columns in reverse order for some reason
                     if(values[i]["HTML_flag"] == undefined)
                     {
@@ -1152,6 +1183,15 @@
             slide: function( event, ui ) {
                 nodeDistanceSliderValue = ui.value;
                 RunLayout(cy);
+            }
+        });
+
+        $( "#concentricOrderList" ).sortable();
+        $('#separateDrugCandidateCheckbox').click(function(){
+            if($(this).is(':checked')){
+                document.getElementById("concentricOrderList").innerHTML+='<li class="ui-state-default" id="drugCandidateSortOrder">Drug Candidate</li>';
+            } else {
+                document.getElementById("concentricOrderList").removeChild(document.getElementById("drugCandidateSortOrder"));
             }
         });
 
@@ -2058,6 +2098,17 @@
     var geneOntologyMultiplier=0;
     var doComplexRings =false;
     var centeredNodeCount = 0;
+    var sortedIDs;
+    var diseaseBaseValue = 2400; // used for ring ordering
+    var phenotypeBaseValue = 2100;
+    var geneBaseValue = 1800;
+    var proteinBaseValue = 1500;
+    var interproBaseValue = 1200;
+    var geneOntologyBaseValue = 900;
+    var pathwayBaseValue = 600;
+    var drugBaseValue = 300;
+    var drugCandidateBaseValue = 300; // becomes 0 if seperated from drugs
+
     function RunLayout(cy) {
         if(window.advanced_flag == true)
         {
@@ -2108,6 +2159,25 @@
                 doComplexRings = cy.nodes().length > minimumForComplexRings;
                 centeredNodeCount=0;
 
+                sortedIDs = $( "#concentricOrderList" ).sortable( "toArray" );
+                diseaseBaseValue = 2400 - sortedIDs.indexOf("diseaseSortOrder")*300;
+                phenotypeBaseValue = 2400 - sortedIDs.indexOf("phenotypeSortOrder")*300;
+                geneBaseValue = 2400 - sortedIDs.indexOf("geneSortOrder")*300;
+                proteinBaseValue = 2400 - sortedIDs.indexOf("proteinSortOrder")*300;
+                interproBaseValue = 2400 - sortedIDs.indexOf("interproSortOrder")*300;
+                geneOntologyBaseValue = 2400 - sortedIDs.indexOf("geneOntologySortOrder")*300;
+                pathwayBaseValue = 2400 - sortedIDs.indexOf("pathwaySortOrder")*300;
+                drugBaseValue = 2400 - sortedIDs.indexOf("drugSortOrder")*300;
+                if(document.getElementById("separateDrugCandidateCheckbox").checked)
+                {
+                    drugCandidateBaseValue = 2400 - sortedIDs.indexOf("drugCandidateSortOrder")*300;
+                }
+                else
+                {
+                    drugCandidateBaseValue = 2400 - sortedIDs.indexOf("drugSortOrder")*300;
+                }
+
+
                 var manuallyCenterHighDegreeNodes = !spinner.spinner( "option", "disabled" );
                 var centeringLimit = cy.nodes().maxDegree()*2/3;
                 var maxDegree = cy.nodes().maxDegree();
@@ -2145,39 +2215,39 @@
                             {
                                 if(data[key]=="Disease")
                                 {
-                                    [diseaseCount, diseaseMultiplier, typeMultiplier] = ConcentricHelper(diseaseCount, diseaseMultiplier, doComplexRings, 2400);
+                                    [diseaseCount, diseaseMultiplier, typeMultiplier] = ConcentricHelper(diseaseCount, diseaseMultiplier, doComplexRings, diseaseBaseValue);
                                 }
                                 else if(data[key]=="Phenotype")
                                 {
-                                    [phenotypeCount, phenotypeMultiplier, typeMultiplier] = ConcentricHelper(phenotypeCount, phenotypeMultiplier, doComplexRings, 2100);
+                                    [phenotypeCount, phenotypeMultiplier, typeMultiplier] = ConcentricHelper(phenotypeCount, phenotypeMultiplier, doComplexRings, phenotypeBaseValue);
                                 }
                                 else if(data[key]=="Gene")
                                 {
-                                    [geneCount, geneMultiplier, typeMultiplier] = ConcentricHelper(geneCount, geneMultiplier, doComplexRings, 1800);
+                                    [geneCount, geneMultiplier, typeMultiplier] = ConcentricHelper(geneCount, geneMultiplier, doComplexRings, geneBaseValue);
                                 }
                                 else if(data[key]=="Protein")
                                 {
-                                    [proteinCount, proteinMultiplier, typeMultiplier] = ConcentricHelper(proteinCount, proteinMultiplier, doComplexRings, 1500);
+                                    [proteinCount, proteinMultiplier, typeMultiplier] = ConcentricHelper(proteinCount, proteinMultiplier, doComplexRings, proteinBaseValue);
                                 }
                                 else if(data[key]=="Interpro")
                                 {
-                                    [interproCount, interproMultiplier, typeMultiplier] = ConcentricHelper(interproCount, interproMultiplier, doComplexRings, 1200);
+                                    [interproCount, interproMultiplier, typeMultiplier] = ConcentricHelper(interproCount, interproMultiplier, doComplexRings, interproBaseValue);
                                 }
                                 else if(data[key]=="GeneOntology")
                                 {
-                                    [geneOntologyCount, geneOntologyMultiplier, typeMultiplier] = ConcentricHelper(geneOntologyCount, geneOntologyMultiplier, doComplexRings, 900);
+                                    [geneOntologyCount, geneOntologyMultiplier, typeMultiplier] = ConcentricHelper(geneOntologyCount, geneOntologyMultiplier, doComplexRings, geneOntologyBaseValue);
                                 }
                                 else if(data[key]=="Pathway")
                                 {
-                                    [pathwayCount, pathwayMultiplier, typeMultiplier] = ConcentricHelper(pathwayCount, pathwayMultiplier, doComplexRings, 600);
+                                    [pathwayCount, pathwayMultiplier, typeMultiplier] = ConcentricHelper(pathwayCount, pathwayMultiplier, doComplexRings, pathwayBaseValue);
                                 }
                                 else if(data[key]=="Drug")
                                 {
-                                    [drugCount, drugMultiplier, typeMultiplier] = ConcentricHelper(drugCount, drugMultiplier, doComplexRings, 300);
+                                    [drugCount, drugMultiplier, typeMultiplier] = ConcentricHelper(drugCount, drugMultiplier, doComplexRings, drugBaseValue);
                                 }
                                 else if(data[key]=="Drug Candidate")
                                 {
-                                    [drugCandidateCount, drugCandidateMultiplier, typeMultiplier] = ConcentricHelper(drugCandidateCount, drugCandidateMultiplier, doComplexRings, 300);
+                                    [drugCandidateCount, drugCandidateMultiplier, typeMultiplier] = ConcentricHelper(drugCandidateCount, drugCandidateMultiplier, doComplexRings, drugCandidateBaseValue);
                                 }
                                 return typeMultiplier;
                             }
