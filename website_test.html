@@ -2139,7 +2139,7 @@
                 });
                 layout.run();
             }
-            else if (_layoutSelection.options[_layoutSelection.selectedIndex].value == "circle") {
+            else if (_layoutSelection.options[_layoutSelection.selectedIndex].value == "circle" || cy.nodes().length < 7 ) {
                 var layout = cy.layout({
                     name: "circle"
                 });
