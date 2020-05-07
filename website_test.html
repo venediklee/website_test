@@ -429,42 +429,48 @@
             <button onclick="advanced_handler.sourceClickAction.call(advanced_handler)">Add Source</button>
         </div>
         <div id="advancedCheckboxes" hidden>
-            <div id="proteinCheckboxDiv" hidden>
-                <input type="checkbox" id="proteinCheckbox" value="Protein">
-                <label for="proteinCheckbox">Protein </label>
-            </div>
-            <div id="drugCheckboxDiv" hidden>
-                <input type="checkbox" id="drugCheckbox" value="Drug">
-                <label for="drugCheckbox">Drug </label>
-            </div>
-            <div id="chemblMoleculeCheckboxDiv" hidden>
-                <input type="checkbox" id="chemblMoleculeCheckbox" value="ChemblMolecule">
-                <label for="chemblMoleculeCheckbox">Chembl Molecule </label>
-            </div>
-            <div id="pathwayCheckboxDiv" hidden>
-                <input type="checkbox" id="pathwayCheckbox" value="Pathway">
-                <label for="pathwayCheckbox">Pathway </label>
-            </div>
-            <div id="diseaseCheckboxDiv" hidden>
-                <input type="checkbox" id="diseaseCheckbox" value="Disease">
-                <label for="diseaseCheckbox">Disease </label>
-            </div>
-            <div id="interproCheckboxDiv" hidden>
-                <input type="checkbox" id="interproCheckbox" value="Interpro">
-                <label for="interproCheckbox">Interpro </label>
-            </div>
-            <div id="geneOntologyCheckboxDiv" hidden>
-                <input type="checkbox" id="geneOntologyCheckbox" value="GeneOntology">
-                <label for="geneOntologyCheckbox">Gene Ontology </label>
-            </div>
-            <div id="phenotypeCheckboxDiv" hidden>
-                <input type="checkbox" id="phenotypeCheckbox" value="Phenotype">
-                <label for="phenotypeCheckbox">Phenotype </label>
-            </div>
-            <div id="geneCheckboxDiv" hidden>
-                <input type="checkbox" id="geneCheckbox" value="Gene">
-                <label for="geneCheckbox">Gene </label>
-            </div>
+            <fieldset>
+                <legend>
+                    <input type="checkbox" id="toggleAdvancedCheckboxes">
+                    <label for="toggleAdvancedCheckboxes"> Toggle Checkboxes </label>
+                </legend>
+                <div id="proteinCheckboxDiv" hidden>
+                    <input type="checkbox" id="proteinCheckbox" value="Protein">
+                    <label for="proteinCheckbox">Protein </label>
+                </div>
+                <div id="drugCheckboxDiv" hidden>
+                    <input type="checkbox" id="drugCheckbox" value="Drug">
+                    <label for="drugCheckbox">Drug </label>
+                </div>
+                <div id="chemblMoleculeCheckboxDiv" hidden>
+                    <input type="checkbox" id="chemblMoleculeCheckbox" value="ChemblMolecule">
+                    <label for="chemblMoleculeCheckbox">Chembl Molecule </label>
+                </div>
+                <div id="pathwayCheckboxDiv" hidden>
+                    <input type="checkbox" id="pathwayCheckbox" value="Pathway">
+                    <label for="pathwayCheckbox">Pathway </label>
+                </div>
+                <div id="diseaseCheckboxDiv" hidden>
+                    <input type="checkbox" id="diseaseCheckbox" value="Disease">
+                    <label for="diseaseCheckbox">Disease </label>
+                </div>
+                <div id="interproCheckboxDiv" hidden>
+                    <input type="checkbox" id="interproCheckbox" value="Interpro">
+                    <label for="interproCheckbox">Interpro </label>
+                </div>
+                <div id="geneOntologyCheckboxDiv" hidden>
+                    <input type="checkbox" id="geneOntologyCheckbox" value="GeneOntology">
+                    <label for="geneOntologyCheckbox">Gene Ontology </label>
+                </div>
+                <div id="phenotypeCheckboxDiv" hidden>
+                    <input type="checkbox" id="phenotypeCheckbox" value="Phenotype">
+                    <label for="phenotypeCheckbox">Phenotype </label>
+                </div>
+                <div id="geneCheckboxDiv" hidden>
+                    <input type="checkbox" id="geneCheckbox" value="Gene">
+                    <label for="geneCheckbox">Gene </label>
+                </div>
+            </fieldset>
             <button onclick="advanced_handler.addPathAction.call(advanced_handler)">Add Path</button>
         </div>
         <div id="resetSendButtons">
@@ -484,7 +490,6 @@
     <ul> <!-- don't delete ul's -->
     </ul>
 </div>
-
 
 <div class="rightSideBar" id="rightSideBar">
     <ul>
@@ -1202,6 +1207,14 @@
             } else {
                 document.getElementById("concentricOrderList").removeChild(document.getElementById("drugCandidateSortOrder"));
             }
+        });
+
+        $("#toggleAdvancedCheckboxes").click(function(){
+            var check = this.checked;
+            $("#advancedCheckboxes").find("div").each(function(){
+                var checkbox = this.getElementsByTagName("input")[0];
+                checkbox.checked = check;
+            })
         });
 
         $( "#toggleCenteringHighDegreeNodes" ).on( "click", function() {
