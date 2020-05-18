@@ -2368,13 +2368,11 @@
                     {
                         if(levelWidthSliderValue == -1) // set up slider with graph's properties
                         {
-                            console.log("setting slider");
                             levelWidthSliderValue = cy.nodes().length/4;
                             $("#levelWidthSlider").slider( "option", "value", levelWidthSliderValue );
                             $("#levelWidthSlider").slider( "option", "max", levelWidthSliderValue * 2);
                         }
                         // slider is set, return based on the slider value
-                        console.log(levelWidthSliderValue);
                         return levelWidthSliderValue;
                     },
                     equidistant:true,
