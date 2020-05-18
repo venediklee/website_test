@@ -14,7 +14,7 @@
         position: absolute;
         width: 90%;
         left: 5%;
-        top: 78%;
+        top: 80%;
     }
 
     div.leftSideBar
@@ -235,6 +235,14 @@
         left: 27.5%;
     }
 
+    div.levelWidthSlider
+    {
+        position: absolute;
+        width: 45%;
+        top: 77.6%;
+        left: 27.5%;
+    }
+
     @media all and (max-width: 1280px)
     {
         div.tabs
@@ -242,7 +250,7 @@
             position: absolute;
             width: 90%;
             left: 5%;
-            top: max(112%,calc(82% + 275px));
+            top: max(115%,calc(85% + 275px));
         }
 
         div.leftSideBar
@@ -287,12 +295,20 @@
             left: 42.125%;
         }
 
+        div.levelWidthSlider
+        {
+            position: absolute;
+            width: 48.75%;
+            top: 77.5%;
+            left: 42.125%;
+        }
+
         div.rightSideBar
         {
             position: absolute;
             width: 90%;
             left: 5%;
-            top: 78%;
+            top: 81%;
             height: 30%;
             min-height: 275px;
         }
@@ -319,7 +335,7 @@
             position: absolute;
             width: 96%;
             left: 2%;
-            top: max(135%,calc(105% + 275px));
+            top: max(140%,calc(110% + 275px));
         }
 
         div.leftSideBar
@@ -365,12 +381,20 @@
             left: 14.125%;
         }
 
+        div.levelWidthSlider
+        {
+            position: absolute;
+            width: 72.75%;
+            top: 99.1%;
+            left: 14.125%;
+        }
+
         div.rightSideBar
         {
             position: absolute;
             width: 96%;
             left: 2%;
-            top: 100%;
+            top: 105%;
             height: 30%;
             min-height: 275px;
         }
@@ -615,6 +639,7 @@
 </div>
 <div class="loader" id="loader"></div>
 <div class="nodeDistanceSlider" id="nodeDistanceSlider"></div>
+<div class="levelWidthSlider" id="levelWidthSlider"></div>
 
 <script src="cytoscape.min.js"></script>
 
@@ -1227,6 +1252,7 @@
     var leftSideBarTabs;//keep variable to dynamically add new tabs later
     var left_side_handler = new LeftSideHandler();
     var nodeDistanceSliderValue = 30; // used because slider doesn't update properly during the sliding event.
+    var levelWidthSliderValue = -1; // used because slider doesn't update properly during the sliding event.
     $( function() {
         $( "#tabs" ).tabs();
         leftSideBarTabs = $( "#leftSideBar" ).tabs();
@@ -1239,6 +1265,19 @@
             slide: function( event, ui ) {
                 nodeDistanceSliderValue = ui.value;
                 RunLayout(cy);
+            }
+        });
+        $( "#levelWidthSlider" ).slider({
+            value:2,
+            min: 1,
+            max: 3,
+            step: 1,
+            slide: function( event, ui ) {
+                if(cy.nodes().length != 0) // nothing should happen if user slides when there is no graph
+                {
+                    levelWidthSliderValue = ui.value;
+                    RunLayout(cy);
+                }
             }
         });
 
@@ -2126,6 +2165,7 @@
         });
         //console.log(JSON.parse(response.slice(13, -1)));
 
+        levelWidthSliderValue = -1; // used as a flag to re-set the slider max value
         start = new Date().getTime();
         RunLayout(cy);
         end = new Date().getTime();
@@ -2253,7 +2293,6 @@
                 var manuallyCenterHighDegreeNodes = !spinner.spinner( "option", "disabled" );
                 var centeringLimit = cy.nodes().maxDegree()*2/3;
                 var maxDegree = cy.nodes().maxDegree();
-                console.log("enabled=" + manuallyCenterHighDegreeNodes);
                 var layout = cy.layout({
                     //basically typeMultiplier divider * levelWidth is the amount of nodes that can be in 1 circle(eg: proteinCount/->2<-,  levelWidth:->5<-:::: 2*5=10), divider can be unique for each node type
                     name: 'concentric',
@@ -2325,9 +2364,18 @@
                             }
                         }
                     },
-                    levelWidth: function (nodes)
+                    levelWidth: function ()
                     {
-                        return cy.nodes().length/4;
+                        if(levelWidthSliderValue == -1) // set up slider with graph's properties
+                        {
+                            console.log("setting slider");
+                            levelWidthSliderValue = cy.nodes().length/4;
+                            $("#levelWidthSlider").slider( "option", "value", levelWidthSliderValue );
+                            $("#levelWidthSlider").slider( "option", "max", levelWidthSliderValue * 2);
+                        }
+                        // slider is set, return based on the slider value
+                        console.log(levelWidthSliderValue);
+                        return levelWidthSliderValue;
                     },
                     equidistant:true,
                     spacingFactor: 0.16,
