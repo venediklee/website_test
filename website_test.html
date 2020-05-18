@@ -427,7 +427,7 @@
     <div id="tabs-1">
         <div class="searchContainer">
             <div id="selectSource">
-                Enter Node ID: <input type="text" id="nodeKeyTextAdvanced" name="nodeID" size="50">
+                <input type="text" id="nodeKeyTextAdvanced" name="nodeID" size="50" placeholder="node identifier">
                 <select id="nodeTypeBoxAdvanced" onChange="advanced_handler.showHideAdvanced.call(advanced_handler)">
                     {% for key, value in schema.items %}
                     <option value={{key}}>{{key}}</option>
@@ -496,7 +496,7 @@
         </div>
 
         <div class="taxonomyContainer">
-            Taxonomy IDs: <input type="text" id="taxonomyIDsTextAdvanced" name="taxonomyIds" size="20">
+            <input type="text" id="taxonomyIDsTextAdvanced" name="taxonomyIds" size="20" placeholder="taxonomy ID(s)">
             <br>
             <input type="checkbox" id="reviewedProteinCheckboxAdvanced" value="reviewedProtein" checked="true">
             <label for="reviewedProteinCheckboxAdvanced">Reviewed Proteins Only </label>
@@ -504,7 +504,7 @@
     </div>
     <div id="tabs-2">
         <div class="searchContainer">
-            Enter Node ID: <input type="text" id="nodeKeyText" name="nodeID" size="50">
+            <input type="text" id="nodeKeyText" name="nodeID" size="50" placeholder="node identifier">
             <select id="nodeTypeBox" onChange="showHide()">
                 {% for key, value in schema.items %}
                 <option value={{key}}>{{key}}</option>
@@ -522,7 +522,7 @@
         </div>
 
         <div class="taxonomyContainer">
-            Taxonomy IDs: <input type="text" id="taxonomyIDsText" name="taxonomyIds" size="20">
+            <input type="text" id="taxonomyIDsText" name="taxonomyIds" size="20" placeholder="taxonomy ID(s)">
             <br>
             <input type="checkbox" id="reviewedProteinCheckbox" value="reviewedProtein" checked="true">
             <label for="reviewedProteinCheckbox">Reviewed Proteins Only </label>
@@ -533,7 +533,7 @@
 
     </div>
     <div id="tabs-3">
-        Enter Query: <input type="text" id="queryText" name="query" size="50"><br>
+        <input type="text" id="queryText" name="query" size="50" placeholder="cyper query"><br>
         <input type="submit" value="execute query" onclick="ExecuteQuery()">
     </div>
     <div id="tabs-4">
