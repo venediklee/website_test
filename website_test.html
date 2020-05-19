@@ -12,8 +12,8 @@
     div.tabs
     {
         position: absolute;
-        width: 90%;
-        left: 5%;
+        width: 98%;
+        left: 0.4%;
         top: 80%;
     }
 
@@ -129,7 +129,7 @@
 
     body
     {
-        background-color: #8590aa;
+        background-color: #57626e;
     }
 
     #cy
@@ -427,7 +427,7 @@
     <div id="tabs-1">
         <div class="searchContainer">
             <div id="selectSource">
-                <input type="text" id="nodeKeyTextAdvanced" name="nodeID" size="50" placeholder="node identifier">
+                <input type="text" id="nodeKeyTextAdvanced" name="nodeID" size="20" placeholder="node identifier">
                 <select id="nodeTypeBoxAdvanced" onChange="advanced_handler.showHideAdvanced.call(advanced_handler)">
                     {% for key, value in schema.items %}
                     <option value={{key}}>{{key}}</option>
@@ -504,7 +504,7 @@
     </div>
     <div id="tabs-2">
         <div class="searchContainer">
-            <input type="text" id="nodeKeyText" name="nodeID" size="50" placeholder="node identifier">
+            <input type="text" id="nodeKeyText" name="nodeID" size="20" placeholder="node identifier">
             <select id="nodeTypeBox" onChange="showHide()">
                 {% for key, value in schema.items %}
                 <option value={{key}}>{{key}}</option>
