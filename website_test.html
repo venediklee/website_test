@@ -2227,7 +2227,8 @@
             console.log("running breadhfirst layout");
             var layout = cy.layout({
                 name: "breadthfirst",
-                animate: true
+                animate: true,
+                roots: cy.nodes()[0]
             });
             layout.run();
         }
