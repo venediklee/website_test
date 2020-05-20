@@ -360,11 +360,33 @@
             height: 30%;
             min-height: 275px;
         }
+        div.rightSideBar .table-scroll
+        {
+            width: 100%;
+        }
 
         div.rightSideBar .ui-tabs-panel::-webkit-scrollbar /* WebKit */
         {
             width: 0;
             height: 0;
+        }
+
+        #legendTab br:nth-of-type(odd)
+        {
+            display:none;
+        }
+        #legendTab .polaroid:nth-of-type(odd)
+        {
+            width: 49%;
+            float:left;
+            margin-left: 1%;
+            clear: both;
+        }
+        #legendTab .polaroid:nth-of-type(even)
+        {
+            width: 49%;
+            float: right;
+            margin-right: 1%;
         }
     }
 
